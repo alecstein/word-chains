@@ -89,7 +89,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
             }
         }
     }
-    print("Building graph of word distances: 100%...\r", .{});
+    print("Building graph of word distances: 100%  \r", .{});
     return graph;
 }
 
