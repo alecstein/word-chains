@@ -34,4 +34,6 @@ By changing the `words.txt` file you can use any words you like, in any language
 
 # Why?
 
-For fun.
+For fun. This is my first time writing code in a compiled language with manual memory management and I thought it might be more straightforward than learning C.
+
+Unfortunately I was not able to take advantage of Zig's `comptime`, because there is presently no compile-time hashmap available. 
