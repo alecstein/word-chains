@@ -141,7 +141,7 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
         }
         try explored.put(node);
     }
-    print("\nDid not find path.\n", .{});
+    print("{s}No path found.{s}", .{ansiRed, ansiEnd});
 }
 
 fn unitEditDistance(start: []const u8, end: []const u8) bool {
