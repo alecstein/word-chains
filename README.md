@@ -18,7 +18,7 @@ To build, open the terminal and type
 $ zig build-exe word_chains.zig -O ReleaseFast
 ```
 
-Then follow the prompts. Stary by typing in "war" and then "peace."
+Then follow the prompts. Try typing in "war" and then "peace" for example. 
 
 # How does it work?
 
