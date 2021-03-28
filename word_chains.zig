@@ -6,11 +6,13 @@ const print = std.debug.print;
 const eql = std.mem.eql;
 
 pub fn main() !void {
+
     var gpa = std.heap.GeneralPurposeAllocator(.{}){}; // instantiate allocator
     var galloc = &gpa.allocator; // retrieves the created allocator.
 
     var graph = try buildGraph(galloc); // build graph of words/neighbors
     defer graph.deinit();
+    print("\nGraph built.", .{});
 
     while (true) { // main program
 
@@ -66,7 +68,9 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
 
     // if words are distance == 1 apart, make them neighbors of each other
     for (words.items) |outer_word, i| {
-        if (i % 10000 == 0) { print("{}/{} words added to graph...\n", .{i, words.items.len}); }
+        if (i % 1000 == 0) {
+            print("Building graph of word distances: {d}%...\r", .{i*100/words.items.len}); 
+            }
         for (words.items) |inner_word, j| {
             if (j == i) break;
             if (unitEditDistance(inner_word, outer_word)) {
@@ -77,6 +81,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
             }
         }
     }
+    print("Building graph of word distances: 100%...\r", .{});
     return graph;
 }
 
@@ -118,7 +123,7 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
                 queue.append(new_path_node);
 
                 if (eql(u8, neighbor, end)) {
-                    print("\nFound the shortest path.\n", .{});
+                    print("\nFound the shortest path:\n", .{});
                     for (new_path.items) |word| {
                         print("{s}\n", .{word});
                     }
