@@ -13,7 +13,7 @@ A friend asked me to solve the following puzzle:
 > Get from the word "war" to "peace" by making a sequence of moves: either adding, deleting, or changing a letter. Each move must result in a new English word.
 
 The shortest solution (path from "war" to "peace") is:
-
+  
 war  
 par  
 pare  
