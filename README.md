@@ -12,13 +12,7 @@ A friend asked me to solve the following puzzle:
 
 > Get from the word "war" to "peace" by making a sequence of moves: either adding, deleting, or changing a letter. Each move must result in a new English word.
 
-The shortest solution (path from "war" to "peace") is:
-  
-war  
-par  
-pare  
-pace  
-peace  
+The shortest solution (path from "war" to "peace") is: war --> par --> pare --> pace --> peace.
 
 `word_chains` finds chains of words each connected by one letter differences. In other words, it solves the general case of the war/peace puzzle.
 
