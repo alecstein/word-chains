@@ -36,6 +36,6 @@ By changing the `words.txt` file you can use any words you like, in any language
 
 For fun. This is my first time writing code in a compiled language with manual memory management and I thought it might be more straightforward than learning C.
 
-Unfortunately I was not able to take advantage of Zig's `comptime` to freeze the graph building into the binary because there is presently no compile-time hashmap available.
+Unfortunately I was not able to take advantage of Zig's `comptime` to freeze the graph building into the binary because there is presently no compile-time hashmap available. Writing the graph to file is an option, perhaps sometime down the line. 
 
 Once I figured out the basics memory management I was able to get pretty far, and it turned out that speeding up the program came down to good memory management. I still think there's room to speed up the program, perhaps by using a more efficient memory allocator. 
