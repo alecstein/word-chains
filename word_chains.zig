@@ -4,9 +4,9 @@ const stdin = std.io.getStdIn().reader();
 const stdout = std.io.getStdOut().writer();
 const print = std.debug.print;
 const eql = std.mem.eql;
-const ansiCyan = "\x1b[36m";
-const ansiGreen = "\x1b[32m";
-const ansiRed = "\x1b[31m";
+const ansiCyan = "\x1b[36;1m";
+const ansiGreen = "\x1b[32;1m";
+const ansiRed = "\x1b[31;1m";
 const ansiEnd = "\x1b[0m";
 
 pub fn main() !void {
@@ -89,7 +89,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
             }
         }
     }
-    print("Building graph of word distances: 100%  \r", .{});
+    print("Building graph of word distances: {s}DONE{s}  \r", .{ansiGreen, ansiEnd});
     return graph;
 }
 
