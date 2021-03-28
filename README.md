@@ -2,7 +2,9 @@
 
 To build, open the terminal and type
 
-> zig build-exe word_chains.zig -O ReleaseFast
+```
+$ zig build-exe word_chains.zig -O ReleaseFast
+```
 
 # What does it do?
 
