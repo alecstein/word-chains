@@ -1,12 +1,4 @@
-# How to use this software
-
-To build, open the terminal and type
-
-```
-$ zig build-exe word_chains.zig -O ReleaseFast
-```
-
-# What does it do?
+# What does this do?
 
 A friend asked me to solve the following puzzle: 
 
@@ -17,6 +9,16 @@ The shortest solution (path from "war" to "peace") is:
 `war --> par --> pare --> pace --> peace.`
 
 `word_chains` finds chains of words each connected by one letter differences. In other words, it solves the general case of the war/peace puzzle.
+
+# How do I run the program?
+
+To build, open the terminal and type
+
+```
+$ zig build-exe word_chains.zig -O ReleaseFast
+```
+
+Then follow the prompts. Stary by typing in "war" and then "peace."
 
 # How does it work?
 
