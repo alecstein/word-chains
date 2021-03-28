@@ -4,10 +4,14 @@ const stdin = std.io.getStdIn().reader();
 const stdout = std.io.getStdOut().writer();
 const print = std.debug.print;
 const eql = std.mem.eql;
+const ansiCyan = "\x1b[36m";
+const ansiGreen = "\x1b[32m";
+const ansiRed = "\x1b[31m";
+const ansiEnd = "\x1b[0m";
 
 pub fn main() !void {
 
-    print("Starting Alec's\x1b[36m word-chain-finder\x1b[0m. Press Ctrl-C to exit.\n", .{});
+    print("Starting Alec's {s}word-chain-finder{s}. Press Ctrl-C to exit.\n", .{ansiCyan, ansiEnd});
     print("Usage: type in a start word and an end word to find the shortest path between them.\n", .{});
 
 
@@ -27,7 +31,7 @@ pub fn main() !void {
         defer galloc.free(start);
 
         if (graph.get(start) == null) { // check if input is in graph
-            print("\x1b[31mError:\x1b[0m {s} is not in the wordlist.", .{start});
+            print("{s}Error:{s} {s} is not in the wordlist.", .{ansiRed, ansiEnd, start});
             continue;
         }
 
@@ -38,13 +42,13 @@ pub fn main() !void {
         defer galloc.free(end);
 
         if (graph.get(end) == null) {
-            print("\x1b[31mError:\x1b[0m {s} is not in the wordlist.", .{end});
+            print("{s}Error:{s} {s} is not in the wordlist.", .{ansiRed, ansiEnd, end});
             continue;
         }
 
         // check if the two words are the same
         if (eql(u8, start, end)) {
-            print("\x1b[31mError:\x1b[0m {s} and {s} are the same word.", .{start, end});
+            print("{s}Error:{s} {s} and {s} are the same word.", .{ansiRed, ansiEnd, start, end});
             continue;
         }
 
@@ -129,7 +133,7 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
                 if (eql(u8, neighbor, end)) {
                     print("Found the shortest path:\n\n", .{});
                     for (new_path.items) |word| {
-                        print("\x1b[32m{s}\x1b[0m\n", .{word});
+                        print("{s}{s}{s}\n", .{ansiGreen, word, ansiEnd});
                     }
                     return;
                 }
