@@ -12,7 +12,13 @@ The shortest solution (path from "war" to "peace") is:
 
 # How do I run the program?
 
-To build, open the terminal and type
+If you want to compile `word_chains` yourself, you need to have `zig` installed:
+
+```
+$ brew install zig
+```
+
+Then to build, open the terminal and type
 
 ```
 $ zig build-exe word_chains.zig -O ReleaseFast
