@@ -7,6 +7,10 @@ const eql = std.mem.eql;
 
 pub fn main() !void {
 
+    print("Starting Alec's\x1b[36m word-chain-finder\x1b[0m. Press Ctrl-C to exit.\n", .{});
+    print("Usage: type in a start word and an end word to find the shortest path between them.\n", .{});
+
+
     var gpa = std.heap.GeneralPurposeAllocator(.{}){}; // instantiate allocator
     var galloc = &gpa.allocator; // retrieves the created allocator.
 
@@ -23,24 +27,24 @@ pub fn main() !void {
         defer galloc.free(start);
 
         if (graph.get(start) == null) { // check if input is in graph
-            print("\n{s} is not in the wordlist.", .{start});
+            print("\x1b[31mError:\x1b[0m {s} is not in the wordlist.", .{start});
             continue;
         }
 
-        print("\nEnter end word: ", .{});
+        print("Enter end word: ", .{});
         var end_buf: [20]u8 = undefined;
         const end_raw = try stdin.readUntilDelimiterOrEof(&end_buf, '\n');
         const end = try std.ascii.allocLowerString(galloc, end_raw.?);
         defer galloc.free(end);
 
         if (graph.get(end) == null) {
-            print("\n{s} is not in the wordlist.", .{end});
+            print("\x1b[31mError:\x1b[0m {s} is not in the wordlist.", .{end});
             continue;
         }
 
         // check if the two words are the same
         if (eql(u8, start, end)) {
-            print("\n{s} and {s} are the same word.", .{start, end});
+            print("\x1b[31mError:\x1b[0m {s} and {s} are the same word.", .{start, end});
             continue;
         }
 
@@ -123,9 +127,9 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
                 queue.append(new_path_node);
 
                 if (eql(u8, neighbor, end)) {
-                    print("\nFound the shortest path:\n", .{});
+                    print("Found the shortest path:\n\n", .{});
                     for (new_path.items) |word| {
-                        print("{s}\n", .{word});
+                        print("\x1b[32m{s}\x1b[0m\n", .{word});
                     }
                     return;
                 }
