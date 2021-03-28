@@ -1,6 +1,6 @@
 # How to use this software
 
-To build, do:
+To build, open the terminal and type
 
 > zig build-exe word_chains.zig -O ReleaseFast
 
@@ -8,7 +8,7 @@ To build, do:
 
 A friend asked me to solve the following puzzle: 
 
-> how do you get from the word "war" to "peace" by making a sequence of moves: either adding, deleting, or changing a letter. Each move must result in a new English word.
+> Get from the word "war" to "peace" by making a sequence of moves: either adding, deleting, or changing a letter. Each move must result in a new English word.
 
 The shortest solution (path from "war" to "peace") is:
 
