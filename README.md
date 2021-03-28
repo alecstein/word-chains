@@ -6,13 +6,17 @@ To build, do:
 
 # What does it do?
 
-A friend asked me to solve the following puzzle: how do you get from the word "war" to "peace" by either adding, deleting, or changing a letter, and after each move, making a new English word. The solution is:
+A friend asked me to solve the following puzzle: 
 
-war
-par
-pare
-pace
-peace
+> how do you get from the word "war" to "peace" by making a sequence of moves: either adding, deleting, or changing a letter. Each move must result in a new English word.
+
+The shortest solution (path from "war" to "peace") is:
+
+war  
+par  
+pare  
+pace  
+peace  
 
 `word_chains` finds chains of words each connected by one letter differences. In other words, it solves the general case of the war/peace puzzle.
 
