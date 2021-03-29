@@ -14,14 +14,16 @@ pub fn main() !void {
     print("Starting Alec's {s}word-chain-finder{s}. Press Ctrl-C to exit.\n", .{ ansiCyan, ansiEnd });
     print("Usage: type in a start word and an end word to find the shortest path between them.\n", .{});
 
-    // instantiate allocator and then retrieve it
-
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var galloc = &gpa.allocator;
 
+    var arena = std.heap.ArenaAllocator.init(gpa); // also works with page_allocator
+    defer arena.deinit();
+    var aalloc = &arena.allocator;
+
     // build graph of words/neighbors
 
-    var graph = try buildGraph(galloc);
+    var graph = try buildGraph(aalloc);
     defer graph.deinit();
 
     // main loop
@@ -35,8 +37,8 @@ pub fn main() !void {
 
         var start_buf: [20]u8 = undefined;
         const start_raw = try stdin.readUntilDelimiterOrEof(&start_buf, '\n');
-        const start = try std.ascii.allocLowerString(galloc, start_raw.?);
-        defer galloc.free(start);
+        const start = try std.ascii.allocLowerString(aalloc, start_raw.?);
+        // defer galloc.free(start);
 
         // check if input is in graph
 
@@ -48,8 +50,8 @@ pub fn main() !void {
         print("Enter end word: ", .{});
         var end_buf: [20]u8 = undefined;
         const end_raw = try stdin.readUntilDelimiterOrEof(&end_buf, '\n');
-        const end = try std.ascii.allocLowerString(galloc, end_raw.?);
-        defer galloc.free(end);
+        const end = try std.ascii.allocLowerString(aalloc, end_raw.?);
+        // defer galloc.free(end);
 
         if (graph.get(end) == null) {
             print("{s}Error:{s} {s} is not in the dictionary.", .{ ansiRed, ansiEnd, end });
@@ -63,7 +65,7 @@ pub fn main() !void {
             continue;
         }
 
-        try breadthFirstSearch(galloc, graph, start, end);
+        try breadthFirstSearch(aalloc, graph, start, end);
     }
 }
 
@@ -139,7 +141,7 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 
     while (queue.len > 0) {
         const path = queue.popFirst().?.data;
-    
+
         // get the last item in the path
 
         const node = path.items[path.items.len - 1];
@@ -149,6 +151,7 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 
             for (neighbors.items) |neighbor| {
                 var new_path = std.ArrayList([]const u8).init(allocator);
+                defer new_path.deinit();
                 for (path.items) |item| {
                     try new_path.append(item);
                 }
@@ -213,4 +216,12 @@ fn unitEditDistance(start: []const u8, end: []const u8) bool {
         }
     }
     return true;
+}
+
+test "CopyArray" {
+    var old_path = std.ArrayList([]const u8).init(std.testing.allocator);
+    defer old_path.deinit();
+    var path = old_path;
+    try path.append("test");
+    defer path.deinit();
 }
