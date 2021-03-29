@@ -139,7 +139,7 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 
     while (queue.len > 0) {
         const path = queue.popFirst().?.data;
-
+    
         // get the last item in the path
 
         const node = path.items[path.items.len - 1];
