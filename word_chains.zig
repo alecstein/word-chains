@@ -20,7 +20,6 @@ pub fn main() !void {
 
     var graph = try buildGraph(galloc); // build graph of words/neighbors
     defer graph.deinit();
-    print("\nGraph built.", .{});
 
     while (true) { // main program
 
@@ -101,8 +100,6 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 
     var start_array = std.ArrayList([]const u8).init(allocator);
     try start_array.append(start);
-    // var start_pos = Q.Node{ .data = start_array };
-    // queue.append(&start_pos);
     var initial_node = try allocator.create(Q.Node);
     initial_node.data = start_array;
     queue.append(initial_node);
