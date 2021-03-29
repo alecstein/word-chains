@@ -96,7 +96,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
 
     var words_sorted = words.toOwnedSlice();
     std.sort.sort([]const u8, words_sorted, {}, strLenComp);
-    var k: u32 = 0;
+    var k: usize = 0;
     for (words_sorted) |long_word, i| {
         var j = k;
         if (i % 1000 == 0) {
@@ -106,9 +106,9 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
             const short_word = words_sorted[j];
             if (long_word.len - short_word.len > 1) {
                 k += 1;
-                continue;
             }
-            if (unitEditDistance(long_word, short_word)) {
+            else if (unitEditDistance(long_word, short_word)) {
+
                 var longEntry = graph.getEntry(long_word).?;
                 try longEntry.value.append(short_word);
 
@@ -183,9 +183,11 @@ fn strLenComp(context: void, stra: []const u8, strb: []const u8) bool {
     }
 }
 
-fn unitEditDistance(long: []const u8, short: []const u8) bool {
+fn unitEditDistance(start: []const u8, end: []const u8) bool {
 
-    // fast edit distance calculation
+    // fast unit edit distance calculation
+    // returns true if long and short are
+    // one edit apart (levenshtein).
     // assumptions:
     // 1) long.len >= short.len
     // and
@@ -194,20 +196,19 @@ fn unitEditDistance(long: []const u8, short: []const u8) bool {
     // condition and while loop in buildGraph()
 
     var diff: u8 = 0;
-    var i: u8 = 0;
-    var j: u8 = 0;
-    const b: u8 = @boolToInt(long.len == short.len);
+    var i: usize = 0;
+    var j: usize = 0;
 
-    while (i < long.len and j < short.len) {
-        if (long[i] != short[j]) {
+    while (i < start.len) : (i += 1) {
+        if (start[i] != end[j]) {
             diff += 1;
             if (diff > 1) {
                 return false;
             }
-            i += 1;
-            j += 1 * b;
+            if (start.len == end.len) {
+                j += 1;
+            }
         } else {
-            i += 1;
             j += 1;
         }
     }
