@@ -49,3 +49,7 @@ It would be nice to have the option to pre-build the graph at compile time so th
 Unfortunately I was not able to take advantage of Zig's `comptime` to freeze the graph building into the binary because there's no compile-time hashmap available. Writing the graph to file is an option, perhaps sometime down the line. 
 
 Once I figured out the basics memory management I was able to get pretty far, and it turned out that speeding up the program came down to good memory management. I still think there's room to speed up the program, maybe by using a more efficient memory allocator. 
+
+# Have suggestions?
+
+Let me know. I'd love to make this code faster, more efficient, simpler, and more beautiful.
