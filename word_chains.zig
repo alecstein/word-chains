@@ -223,7 +223,7 @@ fn strLenComp(context: void, stra: []const u8, strb: []const u8) bool {
 
 fn unitEditDistance(start: []const u8, end: []const u8) bool {
 
-    // fast unit edit distance calculation
+    // fast unit edit distance resolver
     // -----------------------------------
     // returns true if long and short are
     // one edit apart (levenshtein).
