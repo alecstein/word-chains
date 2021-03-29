@@ -10,17 +10,23 @@ const ansiRed = "\x1b[31;1m";
 const ansiEnd = "\x1b[0m";
 
 pub fn main() !void {
+
+    // instantiate allocator and then retrieve it
+
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var galloc = &gpa.allocator;
+
+    // build graph of words/neighbors
+
+    var graph = try buildGraph(galloc);
+    defer graph.deinit();
+
     print("Starting Alec's {s}word-chain-finder{s}. Press Ctrl-C to exit.\n", .{ ansiCyan, ansiEnd });
     print("Usage: type in a start word and an end word to find the shortest path between them.\n", .{});
 
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){}; // instantiate allocator
-    var galloc = &gpa.allocator; // retrieves the created allocator.
-
-    var graph = try buildGraph(galloc); // build graph of words/neighbors
-    defer graph.deinit();
-
     // main loop
-    while (true) { 
+
+    while (true) {
 
         // get user input and convert to lowercase
         // check if the words are in the dicitonary before starting search
@@ -32,8 +38,10 @@ pub fn main() !void {
         const start = try std.ascii.allocLowerString(galloc, start_raw.?);
         defer galloc.free(start);
 
-        if (graph.get(start) == null) { // check if input is in graph
-            print("{s}Error:{s} {s} is not in the dictionary.", .{ansiRed, ansiEnd, start});
+        // check if input is in graph
+
+        if (graph.get(start) == null) {
+            print("{s}Error:{s} {s} is not in the dictionary.", .{ ansiRed, ansiEnd, start });
             continue;
         }
 
@@ -44,13 +52,14 @@ pub fn main() !void {
         defer galloc.free(end);
 
         if (graph.get(end) == null) {
-            print("{s}Error:{s} {s} is not in the dictionary.", .{ansiRed, ansiEnd, end});
+            print("{s}Error:{s} {s} is not in the dictionary.", .{ ansiRed, ansiEnd, end });
             continue;
         }
 
         // check if the two words are the same
+
         if (eql(u8, start, end)) {
-            print("{s}Error:{s} {s} and {s} are the same word.", .{ansiRed, ansiEnd, start, end});
+            print("{s}Error:{s} {s} and {s} are the same word.", .{ ansiRed, ansiEnd, start, end });
             continue;
         }
 
@@ -61,14 +70,17 @@ pub fn main() !void {
 fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]const u8)) {
 
     // initialize graph
+
     var graph = std.StringHashMap(std.ArrayList([]const u8)).init(allocator);
 
     // initialize list of words and put them in array
+
     var words = std.ArrayList([]const u8).init(allocator);
     defer words.deinit();
 
     // read the words from the file and put them into the graph (graph)
     // and the words list (words)
+
     var file_it = std.mem.tokenize(input, "\n");
     while (file_it.next()) |word| {
         try words.append(word);
@@ -81,13 +93,15 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
     // we can sort the strings and keep track of their distances
     // only comparing strings that are at most one letter different
     // in length
-    
+
     var words_sorted = words.toOwnedSlice();
     std.sort.sort([]const u8, words_sorted, {}, strLenComp);
     var k: u32 = 0;
     for (words_sorted) |long_word, i| {
         var j = k;
-        if (i % 1000 == 0) { print("Calculating word distances: {d}%...\r", .{i * 100 / words_sorted.len});}
+        if (i % 1000 == 0) {
+            print("Calculating word distances: {d}%\r", .{i * 100 / words_sorted.len});
+        }
         while (j < i) : (j += 1) {
             const short_word = words_sorted[j];
             if (long_word.len - short_word.len > 1) {
@@ -102,16 +116,14 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
             }
         }
     }
-
-    print("Calculating word distances: {s}DONE{s}  \r", .{ ansiGreen, ansiEnd });
+    print("Calculating word distances: {s}DONE{s}\r", .{ ansiGreen, ansiEnd });
     return graph;
-
-
 }
 
 fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(std.ArrayList([]const u8)), start: []const u8, end: []const u8) !void {
 
     // initialize a queue datastructure
+    
     const Q = std.TailQueue(std.ArrayList([]const u8));
     var queue = Q{};
 
@@ -128,6 +140,7 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
         const path = queue.popFirst().?.data;
 
         // get the last item in the path
+
         const node = path.items[path.items.len - 1];
 
         if (!explored.exists(node)) {
@@ -159,28 +172,30 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 }
 
 fn strLenComp(context: void, stra: []const u8, strb: []const u8) bool {
+
     // used for sorting the list of words
+
     if (strb.len > stra.len) {
         return true;
-    }
-    else {
+    } else {
         return false;
     }
 }
 
 fn unitEditDistance(long: []const u8, short: []const u8) bool {
+
     // fast edit distance calculation
     // assumptions:
     // 1) long.len >= short.len
-    // and 
+    // and
     // 2) long.len - short.len <= 1
-    // this is imposed by the sorting 
-    // condition in the buildGraph function
+    // (1) and (2) are imposed by the sorting
+    // condition and while loop in buildGraph()
 
     var diff: u8 = 0;
     var i: u8 = 0;
     var j: u8 = 0;
-    const b: u8 =  @boolToInt(long.len == short.len);
+    const b: u8 = @boolToInt(long.len == short.len);
 
     while (i < long.len and j < short.len) {
         if (long[i] != short[j]) {
@@ -190,8 +205,7 @@ fn unitEditDistance(long: []const u8, short: []const u8) bool {
             }
             i += 1;
             j += 1 * b;
-        } 
-        else {
+        } else {
             i += 1;
             j += 1;
         }
