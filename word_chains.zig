@@ -17,7 +17,7 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var galloc = &gpa.allocator;
 
-    var arena = std.heap.ArenaAllocator.init(gpa); // also works with page_allocator
+    var arena = std.heap.ArenaAllocator.init(galloc); // also works with page_allocator
     defer arena.deinit();
     var aalloc = &arena.allocator;
 
@@ -82,6 +82,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
 
     // read the words from the file and put them into the graph (graph)
     // and the words list (words)
+    // also: initialize the graph with empty arrays
 
     var file_it = std.mem.tokenize(input, "\n");
     while (file_it.next()) |word| {
@@ -90,7 +91,8 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
         try graph.put(word, empty_arr);
     }
 
-    // fast string comparison algorithm
+    // fast graph-building algorithm
+    // ------------------------------
     // if we know that the strings are at most distance one apart
     // we can sort the strings and keep track of their distances
     // only comparing strings that are at most one letter different
@@ -98,17 +100,45 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
 
     var words_sorted = words.toOwnedSlice();
     std.sort.sort([]const u8, words_sorted, {}, strLenComp);
-    var k: usize = 0;
+
+    // k keeps track of the first word in the sorted array
+    // which is one less (in length) than the current (long) word.
+    // this changes as the long word grows
+
+    var k: usize = 0; 
+
     for (words_sorted) |long_word, i| {
+
+        // j starts at k and finishes at i. a word looks at all
+        // the words shorter than it. this avoids a complete
+        // double-for-loop. 
+
         var j = k;
+
+        // perc is percent complete, used to tell the user
+        // how far along the graph is to being built
+
+        const perc: usize = i * 100 / words_sorted.len;
         if (i % 1000 == 0) {
-            print("Calculating word distances: {d}%\r", .{i * 100 / words_sorted.len});
+           print("Calculating word distances: {d}%\r", .{perc});
         }
+
         while (j < i) : (j += 1) {
+
             const short_word = words_sorted[j];
+
+            // if the long word is more than 1 longer than the
+            // short word, keep increasing k (continuing through
+            // this loop also increases j).
+
             if (long_word.len - short_word.len > 1) {
                 k += 1;
             }
+
+            // if the len(long_word) = len(short_word) (+1) 
+            // then check if they're one edit distance apart.
+            // if so, add to the graph.
+
             else if (unitEditDistance(long_word, short_word)) {
 
                 var longEntry = graph.getEntry(long_word).?;
@@ -119,19 +149,23 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
             }
         }
     }
-    print("Calculating word distances: {s}DONE{s}\r", .{ ansiGreen, ansiEnd });
+    
+    print("Calculating word distances: {s}DONE!{s}\r", .{ ansiGreen, ansiEnd });
+
     return graph;
 }
 
 fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(std.ArrayList([]const u8)), start: []const u8, end: []const u8) !void {
 
     // initialize a queue datastructure
-
     const Q = std.TailQueue(std.ArrayList([]const u8));
     var queue = Q{};
 
     var start_array = std.ArrayList([]const u8).init(allocator);
+    defer start_array.deinit();
+
     try start_array.append(start);
+
     var initial_node = try allocator.create(Q.Node);
     initial_node.data = start_array;
     queue.append(initial_node);
@@ -140,10 +174,10 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
     defer explored.deinit();
 
     while (queue.len > 0) {
+
         const path = queue.popFirst().?.data;
 
         // get the last item in the path
-
         const node = path.items[path.items.len - 1];
 
         if (!explored.exists(node)) {
@@ -151,7 +185,7 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 
             for (neighbors.items) |neighbor| {
                 var new_path = std.ArrayList([]const u8).init(allocator);
-                defer new_path.deinit();
+                // defer new_path.deinit();
                 for (path.items) |item| {
                     try new_path.append(item);
                 }
@@ -193,16 +227,16 @@ fn unitEditDistance(start: []const u8, end: []const u8) bool {
     // one edit apart (levenshtein).
     // assumptions:
     // 1) long.len >= short.len
-    // and
     // 2) long.len - short.len <= 1
-    // (1) and (2) are imposed by the sorting
+    // 3) long != short (at least one difference exists)
+    // (1), (2), and (3) are imposed by the sorting
     // condition and while loop in buildGraph()
 
     var diff: u8 = 0;
     var i: usize = 0;
     var j: usize = 0;
 
-    while (i < start.len) : (i += 1) {
+    while (i < start.len and j < end.len) : (i += 1) {
         if (start[i] != end[j]) {
             diff += 1;
             if (diff > 1) {
@@ -218,10 +252,31 @@ fn unitEditDistance(start: []const u8, end: []const u8) bool {
     return true;
 }
 
-test "CopyArray" {
+test "Make copy of an array (?)" {
     var old_path = std.ArrayList([]const u8).init(std.testing.allocator);
     defer old_path.deinit();
     var path = old_path;
     try path.append("test");
+    try path.append("matthew");
+    for (old_path.items) |item| {
+        print("{s}\n", .{item}); // ""
+    }
+    print("\n", .{});
+    for (path.items) |item| {
+        print("{s}\n", .{item}); // "test". "matthew"
+    }
     defer path.deinit();
+}
+
+test "Make a copy of an array (?) (2)" {
+    var old_array = std.ArrayList([]const u8).init(std.testing.allocator);
+    defer old_array.deinit();
+
+    try old_array.append("hello");
+    try old_array.append("man");
+    var array = std.ArrayList([]const u8).init(std.testing.allocator);
+    defer array.deinit();
+    for (old_array.items) |item| {
+        try array.append(item);
+    }
 }
