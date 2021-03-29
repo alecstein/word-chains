@@ -36,6 +36,12 @@ By changing the `words.txt` file you can use any words you like. You can add wor
 
 For fun. This is my first time writing code in a compiled language with manual memory management and I thought it might be more straightforward than learning C.
 
+In the end, getting through the Zig docs was a challenge and I had to rely on friends and the #zig freenode channel for help. Without them I definitely couldn't have built this basic application by myself.
+
+This took me about 30-40 hours. I had to learn what an allocator was, how to allocate memory efficiently, how to use pointers, and how to read the Zig source. 
+
+For comparison, the python version took me less than 30 minutes. 
+
 # What next?
 
 It would be nice to have the option to pre-build the graph at compile time so that you don't have to build it on every run.
