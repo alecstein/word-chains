@@ -13,7 +13,7 @@ pub fn main() !void {
 
     print("Starting Alec's {s}word-chain-finder{s}. Press Ctrl-C to exit.\n", .{ ansiCyan, ansiEnd });
     print("Usage: type in a start word and an end word to find the shortest path between them.\n", .{});
-    
+
     // instantiate allocator and then retrieve it
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -110,8 +110,9 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
             }
             if (unitEditDistance(long_word, short_word)) {
                 var longEntry = graph.getEntry(long_word).?;
-                var shortEntry = graph.getEntry(short_word).?;
                 try longEntry.value.append(short_word);
+
+                var shortEntry = graph.getEntry(short_word).?;
                 try shortEntry.value.append(long_word);
             }
         }
