@@ -1,5 +1,5 @@
 const std = @import("std");
-const input = @embedFile("words.txt");
+const input = @embedFile("words_med.txt");
 const stdin = std.io.getStdIn().reader();
 const stdout = std.io.getStdOut().writer();
 const print = std.debug.print;
@@ -11,6 +11,9 @@ const ansiEnd = "\x1b[0m";
 
 pub fn main() !void {
 
+    print("Starting Alec's {s}word-chain-finder{s}. Press Ctrl-C to exit.\n", .{ ansiCyan, ansiEnd });
+    print("Usage: type in a start word and an end word to find the shortest path between them.\n", .{});
+    
     // instantiate allocator and then retrieve it
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -20,9 +23,6 @@ pub fn main() !void {
 
     var graph = try buildGraph(galloc);
     defer graph.deinit();
-
-    print("Starting Alec's {s}word-chain-finder{s}. Press Ctrl-C to exit.\n", .{ ansiCyan, ansiEnd });
-    print("Usage: type in a start word and an end word to find the shortest path between them.\n", .{});
 
     // main loop
 
@@ -123,7 +123,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
 fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(std.ArrayList([]const u8)), start: []const u8, end: []const u8) !void {
 
     // initialize a queue datastructure
-    
+
     const Q = std.TailQueue(std.ArrayList([]const u8));
     var queue = Q{};
 
