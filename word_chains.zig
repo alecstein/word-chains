@@ -19,15 +19,21 @@ pub fn main() !void {
     var graph = try buildGraph(galloc); // build graph of words/neighbors
     defer graph.deinit();
 
-    while (true) { // main program
-        print("\nEnter start word: ", .{}); // get user input
-        var start_buf: [20]u8 = undefined; // and convert to lowercase
+    // main loop
+    while (true) { 
+
+        // get user input and convert to lowercase
+        // check if the words are in the dicitonary before starting search
+
+        print("\nEnter start word: ", .{});
+
+        var start_buf: [20]u8 = undefined;
         const start_raw = try stdin.readUntilDelimiterOrEof(&start_buf, '\n');
         const start = try std.ascii.allocLowerString(galloc, start_raw.?);
         defer galloc.free(start);
 
         if (graph.get(start) == null) { // check if input is in graph
-            print("{s}Error:{s} {s} is not in the wordlist.", .{ ansiRed, ansiEnd, start });
+            print("{s}Error:{s} {s} is not in the dictionary.", .{ansiRed, ansiEnd, start});
             continue;
         }
 
@@ -38,13 +44,13 @@ pub fn main() !void {
         defer galloc.free(end);
 
         if (graph.get(end) == null) {
-            print("{s}Error:{s} {s} is not in the wordlist.", .{ ansiRed, ansiEnd, end });
+            print("{s}Error:{s} {s} is not in the dictionary.", .{ansiRed, ansiEnd, end});
             continue;
         }
 
         // check if the two words are the same
         if (eql(u8, start, end)) {
-            print("{s}Error:{s} {s} and {s} are the same word.", .{ ansiRed, ansiEnd, start, end });
+            print("{s}Error:{s} {s} and {s} are the same word.", .{ansiRed, ansiEnd, start, end});
             continue;
         }
 
@@ -70,24 +76,37 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
         try graph.put(word, empty_arr);
     }
 
-    // if words are distance == 1 apart, make them neighbors of each other
-    for (words.items) |outer_word, i| {
-        if (i % 500 == 0) {
-            // update user to progress
-            print("Calculating word distances: {d}%...\r", .{i * 100 / words.items.len});
-        }
-        for (words.items) |inner_word, j| {
-            if (j == i) break;
-            if (unitEditDistance(inner_word, outer_word)) {
-                var outerEntry = graph.getEntry(outer_word).?;
-                var innerEntry = graph.getEntry(inner_word).?;
-                try outerEntry.value.append(inner_word);
-                try innerEntry.value.append(outer_word);
+    // fast string comparison algorithm
+    // if we know that the strings are at most distance one apart
+    // we can sort the strings and keep track of their distances
+    // only comparing strings that are at most one letter different
+    // in length
+    
+    var words_sorted = words.toOwnedSlice();
+    std.sort.sort([]const u8, words_sorted, {}, strLenComp);
+    var k: u32 = 0;
+    for (words_sorted) |long_word, i| {
+        var j = k;
+        if (i % 1000 == 0) { print("Calculating word distances: {d}%...\r", .{i * 100 / words_sorted.len});}
+        while (j < i) : (j += 1) {
+            const short_word = words_sorted[j];
+            if (long_word.len - short_word.len > 1) {
+                k += 1;
+                continue;
+            }
+            if (unitEditDistance(long_word, short_word)) {
+                var longEntry = graph.getEntry(long_word).?;
+                var shortEntry = graph.getEntry(short_word).?;
+                try longEntry.value.append(short_word);
+                try shortEntry.value.append(long_word);
             }
         }
     }
+
     print("Calculating word distances: {s}DONE{s}  \r", .{ ansiGreen, ansiEnd });
     return graph;
+
+
 }
 
 fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(std.ArrayList([]const u8)), start: []const u8, end: []const u8) !void {
@@ -139,39 +158,40 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
     print("{s}No path found.{s}", .{ ansiRed, ansiEnd });
 }
 
-fn unitEditDistance(start: []const u8, end: []const u8) bool {
-
-    // mafiaboss absolute value calculation
-    // if strings are greater than distance 2 apart, return false
-    if (start.len > end.len) {
-        if (start.len - end.len > 1) {
-            return false;
-        }
+fn strLenComp(context: void, stra: []const u8, strb: []const u8) bool {
+    // used for sorting the list of words
+    if (strb.len > stra.len) {
+        return true;
     }
-
-    if (std.math.max(start.len, end.len) - std.math.min(start.len, end.len) > 1) {
+    else {
         return false;
     }
+}
+
+fn unitEditDistance(long: []const u8, short: []const u8) bool {
+    // fast edit distance calculation
+    // assumptions:
+    // 1) long.len >= short.len
+    // and 
+    // 2) long.len - short.len <= 1
+    // this is imposed by the sorting 
+    // condition in the buildGraph function
 
     var diff: u8 = 0;
-    var i: usize = 0;
-    var j: usize = 0;
+    var i: u8 = 0;
+    var j: u8 = 0;
+    const b: u8 =  @boolToInt(long.len == short.len);
 
-    while (i < start.len and j < end.len) {
-        if (start[i] != end[j]) {
+    while (i < long.len and j < short.len) {
+        if (long[i] != short[j]) {
             diff += 1;
             if (diff > 1) {
                 return false;
             }
-            if (start.len > end.len) {
-                i += 1;
-            } else if (start.len < end.len) {
-                j += 1;
-            } else {
-                i += 1;
-                j += 1;
-            }
-        } else {
+            i += 1;
+            j += 1 * b;
+        } 
+        else {
             i += 1;
             j += 1;
         }
