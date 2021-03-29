@@ -76,6 +76,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
     var graph = std.StringHashMap(std.ArrayList([]const u8)).init(allocator);
 
     // initialize list of words and put them in array
+    // note: wordlist contains no duplicates
 
     var words = std.ArrayList([]const u8).init(allocator);
     defer words.deinit();
@@ -94,9 +95,8 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
     // fast graph-building algorithm
     // ------------------------------
     // if we know that the strings are at most distance one apart
-    // we can sort the strings and keep track of their distances
-    // only comparing strings that are at most one letter different
-    // in length
+    // we can sort the strings, and compare only the strings that
+    // are at most one letter different in length
 
     var words_sorted = words.toOwnedSlice();
     std.sort.sort([]const u8, words_sorted, {}, strLenComp);
@@ -109,9 +109,10 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
 
     for (words_sorted) |long_word, i| {
 
-        // j starts at k and finishes at i. a word looks at all
-        // the words shorter than it. this avoids a complete
-        // double-for-loop. 
+        // j starts at k and finishes at i-1. a word is compared
+        // only with the words of equal length or of length one
+        // less than it, not including itself. this avoids a complete
+        // double for-loop.
 
         var j = k;
 
@@ -250,33 +251,4 @@ fn unitEditDistance(start: []const u8, end: []const u8) bool {
         }
     }
     return true;
-}
-
-test "Make copy of an array (?)" {
-    var old_path = std.ArrayList([]const u8).init(std.testing.allocator);
-    defer old_path.deinit();
-    var path = old_path;
-    try path.append("test");
-    try path.append("matthew");
-    for (old_path.items) |item| {
-        print("{s}\n", .{item}); // ""
-    }
-    print("\n", .{});
-    for (path.items) |item| {
-        print("{s}\n", .{item}); // "test". "matthew"
-    }
-    defer path.deinit();
-}
-
-test "Make a copy of an array (?) (2)" {
-    var old_array = std.ArrayList([]const u8).init(std.testing.allocator);
-    defer old_array.deinit();
-
-    try old_array.append("hello");
-    try old_array.append("man");
-    var array = std.ArrayList([]const u8).init(std.testing.allocator);
-    defer array.deinit();
-    for (old_array.items) |item| {
-        try array.append(item);
-    }
 }
