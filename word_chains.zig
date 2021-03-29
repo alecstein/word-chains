@@ -10,10 +10,8 @@ const ansiRed = "\x1b[31;1m";
 const ansiEnd = "\x1b[0m";
 
 pub fn main() !void {
-
-    print("Starting Alec's {s}word-chain-finder{s}. Press Ctrl-C to exit.\n", .{ansiCyan, ansiEnd});
+    print("Starting Alec's {s}word-chain-finder{s}. Press Ctrl-C to exit.\n", .{ ansiCyan, ansiEnd });
     print("Usage: type in a start word and an end word to find the shortest path between them.\n", .{});
-
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){}; // instantiate allocator
     var galloc = &gpa.allocator; // retrieves the created allocator.
@@ -22,7 +20,6 @@ pub fn main() !void {
     defer graph.deinit();
 
     while (true) { // main program
-
         print("\nEnter start word: ", .{}); // get user input
         var start_buf: [20]u8 = undefined; // and convert to lowercase
         const start_raw = try stdin.readUntilDelimiterOrEof(&start_buf, '\n');
@@ -30,7 +27,7 @@ pub fn main() !void {
         defer galloc.free(start);
 
         if (graph.get(start) == null) { // check if input is in graph
-            print("{s}Error:{s} {s} is not in the wordlist.", .{ansiRed, ansiEnd, start});
+            print("{s}Error:{s} {s} is not in the wordlist.", .{ ansiRed, ansiEnd, start });
             continue;
         }
 
@@ -41,13 +38,13 @@ pub fn main() !void {
         defer galloc.free(end);
 
         if (graph.get(end) == null) {
-            print("{s}Error:{s} {s} is not in the wordlist.", .{ansiRed, ansiEnd, end});
+            print("{s}Error:{s} {s} is not in the wordlist.", .{ ansiRed, ansiEnd, end });
             continue;
         }
 
         // check if the two words are the same
         if (eql(u8, start, end)) {
-            print("{s}Error:{s} {s} and {s} are the same word.", .{ansiRed, ansiEnd, start, end});
+            print("{s}Error:{s} {s} and {s} are the same word.", .{ ansiRed, ansiEnd, start, end });
             continue;
         }
 
@@ -75,9 +72,10 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
 
     // if words are distance == 1 apart, make them neighbors of each other
     for (words.items) |outer_word, i| {
-        if (i % 1000 == 0) {
-            print("Building graph of word distances: {d}%...\r", .{i*100/words.items.len}); 
-            }
+        if (i % 500 == 0) {
+            // update user to progress
+            print("Calculating word distances: {d}%...\r", .{i * 100 / words.items.len});
+        }
         for (words.items) |inner_word, j| {
             if (j == i) break;
             if (unitEditDistance(inner_word, outer_word)) {
@@ -88,7 +86,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
             }
         }
     }
-    print("Building graph of word distances: {s}DONE{s}  \r", .{ansiGreen, ansiEnd});
+    print("Calculating word distances: {s}DONE{s}  \r", .{ ansiGreen, ansiEnd });
     return graph;
 }
 
@@ -130,7 +128,7 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
                 if (eql(u8, neighbor, end)) {
                     print("Found the shortest path:\n\n", .{});
                     for (new_path.items) |word| {
-                        print("{s}{s}{s}\n", .{ansiGreen, word, ansiEnd});
+                        print("{s}{s}{s}\n", .{ ansiGreen, word, ansiEnd });
                     }
                     return;
                 }
@@ -138,13 +136,18 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
         }
         try explored.put(node);
     }
-    print("{s}No path found.{s}", .{ansiRed, ansiEnd});
+    print("{s}No path found.{s}", .{ ansiRed, ansiEnd });
 }
 
 fn unitEditDistance(start: []const u8, end: []const u8) bool {
 
     // mafiaboss absolute value calculation
     // if strings are greater than distance 2 apart, return false
+    if (start.len > end.len) {
+        if (start.len - end.len > 1) {
+            return false;
+        }
+    }
 
     if (std.math.max(start.len, end.len) - std.math.min(start.len, end.len) > 1) {
         return false;
