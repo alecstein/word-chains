@@ -42281,7 +42281,6 @@ wool
 woolly
 wooly
 woozy
-wor
 worcester
 word
 worded
@@ -42361,7 +42360,6 @@ worthlessness
 worths
 worthwhile
 worthy
-wot
 would
 wound
 wounded

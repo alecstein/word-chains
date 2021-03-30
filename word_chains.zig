@@ -1,9 +1,10 @@
 const std = @import("std");
-const input = @embedFile("words_med.txt");
+const input = @embedFile("words_long.txt");
 const stdin = std.io.getStdIn().reader();
-const stdout = std.io.getStdOut().writer();
 const print = std.debug.print;
-const eql = std.mem.eql;
+
+// escape codes used for printing
+
 const ansiCyan = "\x1b[36;1m";
 const ansiGreen = "\x1b[32;1m";
 const ansiRed = "\x1b[31;1m";
@@ -17,7 +18,9 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var galloc = &gpa.allocator;
 
-    var arena = std.heap.ArenaAllocator.init(galloc); // also works with page_allocator
+    // also works with page_allocator
+
+    var arena = std.heap.ArenaAllocator.init(galloc);
     defer arena.deinit();
     var aalloc = &arena.allocator;
 
@@ -60,7 +63,7 @@ pub fn main() !void {
 
         // check if the two words are the same
 
-        if (eql(u8, start, end)) {
+        if (std.mem.eql(u8, start, end)) {
             print("{s}Error:{s} {s} and {s} are the same word.", .{ ansiRed, ansiEnd, start, end });
             continue;
         }
@@ -70,8 +73,6 @@ pub fn main() !void {
 }
 
 fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]const u8)) {
-
-    // initialize graph
 
     var graph = std.StringHashMap(std.ArrayList([]const u8)).init(allocator);
 
@@ -98,8 +99,11 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
     // we can sort the strings, and compare only the strings that
     // are at most one letter different in length
 
-    var words_sorted = words.toOwnedSlice();
-    std.sort.sort([]const u8, words_sorted, {}, strLenComp);
+    // start by sorting the words by length. we can use the 
+    // bucket sort algorithm (implemented below). this runs 
+    // in O(N) time. 
+
+    const words_sorted = try bucketSortString(allocator, words);
 
     // k keeps track of the first word in the sorted array
     // which is one less (in length) than the current (long) word.
@@ -159,6 +163,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
 fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(std.ArrayList([]const u8)), start: []const u8, end: []const u8) !void {
 
     // initialize a queue datastructure
+
     const Q = std.TailQueue(std.ArrayList([]const u8));
     var queue = Q{};
 
@@ -174,6 +179,14 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
     var explored = std.BufSet.init(allocator);
     defer explored.deinit();
 
+    defer {
+        var it = queue.first;
+        while (it) |node| : (it = node.next) {
+            node.data.deinit();
+            allocator.destroy(node);
+        }
+    }
+
     while (queue.len > 0) {
 
         const path = queue.popFirst().?.data;
@@ -185,18 +198,20 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
             const neighbors = graph.get(node).?;
 
             for (neighbors.items) |neighbor| {
+
                 var new_path = std.ArrayList([]const u8).init(allocator);
-                // defer new_path.deinit();
+
                 for (path.items) |item| {
                     try new_path.append(item);
                 }
                 try new_path.append(neighbor);
 
                 var new_path_node = try allocator.create(Q.Node);
+
                 new_path_node.data = new_path;
                 queue.append(new_path_node);
 
-                if (eql(u8, neighbor, end)) {
+                if (std.mem.eql(u8, neighbor, end)) {
                     print("Found the shortest path:\n\n", .{});
                     for (new_path.items) |word| {
                         print("{s}{s}{s}\n", .{ ansiGreen, word, ansiEnd });
@@ -253,3 +268,94 @@ fn unitEditDistance(start: []const u8, end: []const u8) bool {
     }
     return true;
 }
+
+fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const u8)) !comptime [][]const u8 {
+
+    // takes a list of strings and sorts them by length
+    // uses the Bucket Sort algorithm
+
+    // get the maximum length in the array
+
+    var maxlen: usize = 1; 
+    for (words.items) |word| {
+        if (word.len > maxlen) {
+            maxlen = word.len;
+        }
+    }
+
+    var buckets = try allocator.alloc(std.ArrayList([]const u8), maxlen);
+    defer {
+        for (buckets) |arrlist| {
+            arrlist.deinit();
+        }
+        allocator.free(buckets);
+    }
+
+    // bucket 0 corresponds to length 1 and so on.
+    // initialize each ArrayList
+
+    var i: usize = 0;
+    while (i < maxlen) : (i +=1 ) {
+        var arrayList = std.ArrayList([]const u8).init(std.testing.allocator);
+        buckets[i] = arrayList;
+    }
+
+    // put the words in the buckets
+
+    for (words.items) |word| {
+        try buckets[word.len - 1].append(word);
+    }
+
+    var sorted_words = try allocator.alloc([]const u8, words.items.len);
+
+    i = 0;
+    for (buckets) |arrayList| {
+        for (arrayList.items) |word| {
+            sorted_words[i] = word;
+            i += 1;
+        }
+    }
+
+    return sorted_words;
+}
+
+test "sortedWords" {
+    var myarr = std.ArrayList([]const u8).init(std.testing.allocator);
+    defer myarr.deinit();
+
+    const mywords = [_][]const u8{"hi", "mys", "wowowow", "isnt", "me"};
+    for (mywords) |word| {
+        try myarr.append(word);
+        print("word_to_add: {s}\n", .{word});
+    }
+    var sarr = try bucketSortString(std.testing.allocator, myarr);
+    defer std.testing.allocator.free(sarr);
+
+    for (sarr) |item| {
+        print("added_word: {s}\n", .{item});
+    }
+}
+
+// test "mainfn" {
+
+//     // runs but 'memory corruption' (?)
+
+//     var graph = try buildGraph(std.testing.allocator);
+//     defer graph.deinit();
+//     try breadthFirstSearch(std.testing.allocator, graph, "start", "end");
+// }
+
+
+    // var words_sorted = words.toOwnedSlice();
+    // std.sort.sort([]const u8, words_sorted, {}, strLenComp);
+    // print("{}\n", .{words_sorted});
+
+    // THIS SHOULD WORK! But sadly doesn't
+    // ------------------------------------
+    // var words_sorted_ArrayList = try bucketSortString(allocator, words);
+    // var words_sorted = words_sorted_ArrayList.toOwnedSlice();
+    // print("{u}\n", .{words_sorted});
+
+    // for (words_sorted) |word| {
+    //     print("{s}\n", .{word});
+    // }
