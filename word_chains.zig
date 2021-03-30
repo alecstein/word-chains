@@ -16,17 +16,14 @@ pub fn main() !void {
     print("Usage: type in a start word and an end word to find the shortest path between them.\n", .{});
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    var galloc = &gpa.allocator;
+    var gpa_alloc = &gpa.allocator;
 
-    // also works with page_allocator
-
-    var arena = std.heap.ArenaAllocator.init(galloc);
+    var arena = std.heap.ArenaAllocator.init(gpa_alloc);
     defer arena.deinit();
-    var aalloc = &arena.allocator;
 
-    // build graph of words/neighbors
+    var arena_alloc = &arena.allocator;
 
-    var graph = try buildGraph(aalloc);
+    var graph = try buildGraph(arena_alloc);
     defer graph.deinit();
 
     // main loop
@@ -40,8 +37,9 @@ pub fn main() !void {
 
         var start_buf: [20]u8 = undefined;
         const start_raw = try stdin.readUntilDelimiterOrEof(&start_buf, '\n');
-        const start = try std.ascii.allocLowerString(aalloc, start_raw.?);
-        // defer galloc.free(start);
+        
+        const start = try std.ascii.allocLowerString(gpa_alloc, start_raw.?);
+        defer gpa_alloc.free(start);
 
         // check if input is in graph
 
@@ -51,10 +49,12 @@ pub fn main() !void {
         }
 
         print("Enter end word: ", .{});
+
         var end_buf: [20]u8 = undefined;
         const end_raw = try stdin.readUntilDelimiterOrEof(&end_buf, '\n');
-        const end = try std.ascii.allocLowerString(aalloc, end_raw.?);
-        // defer galloc.free(end);
+
+        const end = try std.ascii.allocLowerString(gpa_alloc, end_raw.?);
+        defer gpa_alloc.free(end);
 
         if (graph.get(end) == null) {
             print("{s}Error:{s} {s} is not in the dictionary.", .{ ansiRed, ansiEnd, end });
@@ -68,7 +68,7 @@ pub fn main() !void {
             continue;
         }
 
-        try breadthFirstSearch(aalloc, graph, start, end);
+        try breadthFirstSearch(arena_alloc, graph, start, end);
     }
 }
 
