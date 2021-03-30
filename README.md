@@ -54,7 +54,16 @@ In the end, getting through the Zig docs was a challenge and I had to rely on fr
 
 This took me about 30-40 hours. I had to learn what an allocator was, how to allocate memory efficiently, how to use pointers, and how to read the Zig source. 
 
-For comparison, the python version took me less than 30 minutes. 
+For comparison, the python version took me less than 30 minutes.
+
+# What I learned 
+
+* how to implement a queue
+* how to make a breadth-first search algorithm
+* basic bucket sorting algorithm
+* structs, types, casting
+* working with strings
+* calculating distances between strings
 
 # What next?
 
