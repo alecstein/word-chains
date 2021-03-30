@@ -1,5 +1,5 @@
 const std = @import("std");
-const input = @embedFile("words_med.txt");
+const input = @embedFile("words_short.txt");
 const stdin = std.io.getStdIn().reader();
 const print = std.debug.print;
 
@@ -161,45 +161,105 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
     return graph;
 }
 
+fn QueueFIFO(comptime T: type) type {
+
+    // simple FIFO queue based on the TailQueue in linked_list.zig.
+    // basic usage is with two functions: addFirst and popLast. 
+    // addFirst puts a Node at the front of the queue, and popLast
+    // returns and removes the last element of the queue. 
+
+    return struct {
+        const Self = @This();
+
+        pub const Node = struct {
+            prev: ?*Node = null,
+            next: ?*Node = null,
+            data: comptime T,
+        };
+
+        first: ?*Node = null,
+        last: ?*Node = null,
+        len: usize = 0,
+
+        pub fn insertBefore(list: *Self, node: *Node, new_node: *Node) void {
+            new_node.next = node;
+            if (node.prev) |prev_node| {
+                // Intermediate node.
+                new_node.prev = prev_node;
+                prev_node.next = new_node;
+            } else {
+                // First element of the list.
+                new_node.prev = null;
+                list.first = new_node;
+            }
+            node.prev = new_node;
+
+            list.len += 1;
+        }
+
+        pub fn remove(list: *Self, node: *Node) void {
+            if (node.prev) |prev_node| {
+                // Intermediate node.
+                prev_node.next = node.next;
+            } else {
+                // First element of the list.
+                list.first = node.next;
+            }
+
+            if (node.next) |next_node| {
+                // Intermediate node.
+                next_node.prev = node.prev;
+            } else {
+                // Last element of the list.
+                list.last = node.prev;
+            }
+
+            list.len -= 1;
+            std.debug.assert(list.len == 0 or (list.first != null and list.last != null));
+        }
+
+        pub fn addFirst(list: *Self, new_node: *Node) void {
+            if (list.first) |first| {
+                // Insert before first.
+                list.insertBefore(first, new_node);
+            } else {
+                // Empty list.
+                list.first = new_node;
+                list.last = new_node;
+                new_node.prev = null;
+                new_node.next = null;
+
+                list.len = 1;
+            }
+        }
+        
+        pub fn popLast(list: *Self) ?*Node {
+            const last = list.last orelse return null;
+            list.remove(last);
+            return last;
+        }
+    };
+}
+
 fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(std.ArrayList([]const u8)), start: []const u8, end: []const u8) !void {
 
-    // initialize a queue datastructure
-
-    // const Q = std.TailQueue(std.ArrayList([]const u8));
-    const Q = std.TailQueue([][]const u8);
+    const Q = QueueFIFO([][]const u8);
     var queue = Q{};
 
-    // var queue = std.ArrayList([][]const u8).init(allocator);
-    // var start_array = std.ArrayList([]const u8).init(allocator);
-    // defer start_array.deinit();
-
-    var init_array = try allocator.alloc([]const u8, 1);
-    defer allocator.free(init_array);
-
-    init_array[0] = start;
-
-    // try start_array.append(start);
-
-    // var initial_node = try allocator.create(Q.Node);
-    // initial_node.data = start_array;
-    // queue.append(initial_node);
+    var init_path = try allocator.alloc([]const u8, 1);
+    defer allocator.free(init_path);
 
     var init_node = try allocator.create(Q.Node);
     defer allocator.destroy(init_node);
 
-    init_node.data = init_array;
-    queue.append(init_node);
+    init_path[0] = start;
+
+    init_node.data = init_path;
+    // queue.append(init_node);
+    queue.addFirst(init_node);
 
     var explored = std.BufSet.init(allocator);
     defer explored.deinit();
-
-    // defer {
-    //     var it = queue.first;
-    //     while (it) |node| : (it = node.next) {
-    //         node.data.deinit();
-    //         allocator.destroy(node);
-    //     }
-    // }
 
     defer {
         var it = queue.first;
@@ -211,42 +271,33 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 
     while (queue.len > 0) {
 
-        const path = queue.popFirst().?.data;
-        // const plen = path.items.len;
+        // const path = queue.popFirst().?.data;
+        const path = queue.popLast().?.data;
         const plen = path.len;
-
-        // get the last item in the path
-        // const node = path.items[plen - 1];
         const end_node = path[plen - 1];
 
         if (!explored.exists(end_node)) {
+
             const neighbors = graph.get(end_node).?;
 
             for (neighbors.items) |neighbor| {
 
-                // var new_path = std.ArrayList([]const u8).init(allocator);
-
                 var new_path = try allocator.alloc([]const u8, plen + 1);
-                // for (path.items) |node, i| {
+
                 for (path) |node, i| {  
                     new_path[i] = node;
                 }
+
                 new_path[plen] = neighbor;
-
-                // for (path.items) |item| {
-                //     try new_path.append(item);
-                // }
-
-                // try new_path.append(neighbor);
 
                 var new_path_node = try allocator.create(Q.Node);
 
                 new_path_node.data = new_path;
-                queue.append(new_path_node);
+                queue.addFirst(new_path_node);
 
                 if (std.mem.eql(u8, neighbor, end)) {
                     print("Found the shortest path:\n\n", .{});
-                    // for (new_path.items) |word| {
+
                     for (new_path) |word| {
                         print("{s}{s}{s}\n", .{ ansiGreen, word, ansiEnd });
                     }
@@ -356,3 +407,66 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
 
     return words_sorted;
 }
+
+// test "errorHandling" {
+
+//     print("Starting Alec's {s}word-chain-finder{s}. Press Ctrl-C to exit.\n", .{ ansiCyan, ansiEnd });
+//     print("Usage: type in a start word and an end word to find the shortest path between them.\n", .{});
+
+//     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+//     var gpa_alloc = &gpa.allocator;
+
+//     var arena = std.heap.ArenaAllocator.init(gpa_alloc);
+//     defer arena.deinit();
+
+//     var arena_alloc = &arena.allocator;
+
+//     var graph = try buildGraph(arena_alloc);
+//     defer graph.deinit();
+
+//     // main loop
+
+//     while (true) {
+
+//         // get user input and convert to lowercase
+//         // check if the words are in the dicitonary before starting search
+
+//         print("\nEnter start word: ", .{});
+
+//         var start_buf: [20]u8 = undefined;
+//         const start_raw = try stdin.readUntilDelimiterOrEof(&start_buf, '\n');
+        
+//         const start = try std.ascii.allocLowerString(gpa_alloc, start_raw.?);
+//         defer gpa_alloc.free(start);
+
+//         // check if input is in graph
+
+//         if (graph.get(start) == null) {
+//             print("{s}Error:{s} {s} is not in the dictionary.", .{ ansiRed, ansiEnd, start });
+//             continue;
+//         }
+
+//         print("Enter end word: ", .{});
+
+//         var end_buf: [20]u8 = undefined;
+//         const end_raw = try stdin.readUntilDelimiterOrEof(&end_buf, '\n');
+
+//         const end = try std.ascii.allocLowerString(gpa_alloc, end_raw.?);
+//         defer gpa_alloc.free(end);
+
+//         if (graph.get(end) == null) {
+//             print("{s}Error:{s} {s} is not in the dictionary.", .{ ansiRed, ansiEnd, end });
+//             continue;
+//         }
+
+//         // check if the two words are the same
+
+//         if (std.mem.eql(u8, start, end)) {
+//             print("{s}Error:{s} {s} and {s} are the same word.", .{ ansiRed, ansiEnd, start, end });
+//             continue;
+//         }
+
+//         try breadthFirstSearch(arena_alloc, graph, start, end);
+//     }
+
+// }
