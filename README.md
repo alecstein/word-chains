@@ -25,19 +25,18 @@ $ zig build-exe word_chains.zig -O ReleaseFast
 ```
 
 Then follow the prompts. Try typing in "war" and then "peace" for example:
-
-$ Starting Alec's **word-chain-finder**. Press Ctrl-C to exit.
-$ Usage: type in a start word and an end word to find the shortest path between them.
-$ Calculating word distances: **DONE!**
-$ Enter start word: war  
-$ Enter end word: peace
-$ Found the shortest path:
-$
-$ **war**
-$ **par**
-$ **pare**
-$ **pace**
-$ **peace**
+    $ ./word_chains
+    Starting Alec's **word-chain-finder**. Press Ctrl-C to exit.
+    Usage: type in a start word and an end word to find the shortest path between them.
+    Calculating word distances: **DONE!**
+    Enter start word: war  
+    Enter end word: peace
+    Found the shortest path:
+    **war**
+    **par**
+    **pare**
+    **pace**
+    **peace**
 
 # How does it work?
 
