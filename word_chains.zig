@@ -104,6 +104,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
     // in O(N) time. 
 
     const words_sorted = try bucketSortString(allocator, words);
+    defer allocator.free(words_sorted);
 
     // k keeps track of the first word in the sorted array
     // which is one less (in length) than the current (long) word.
@@ -271,10 +272,10 @@ fn unitEditDistance(start: []const u8, end: []const u8) bool {
 
 fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const u8)) ![][]const u8 {
 
-    // takes a list of strings and sorts them by length
+    // takes a list of strings and sorts them by length.
     // uses the Bucket Sort algorithm
 
-    // get the maximum length in the array
+    // start by getting the maximum string length (maxlen)
 
     var maxlen: usize = 1; 
     for (words.items) |word| {
@@ -282,6 +283,9 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
             maxlen = word.len;
         }
     }
+
+    // then make the buckets. each one is a variable-length
+    // array.
 
     var buckets = try allocator.alloc(std.ArrayList([]const u8), maxlen);
     defer {
@@ -292,7 +296,8 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
     }
 
     // bucket 0 corresponds to length 1 and so on.
-    // initialize each ArrayList
+    // each std.ArrayList needs to be initialized with
+    // an allocator.
 
     var i: usize = 0;
     while (i < maxlen) : (i += 1 ) {
@@ -306,15 +311,15 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
         try buckets[word.len - 1].append(word);
     }
 
-    var sorted_words = try allocator.alloc([]const u8, words.items.len);
+    var words_sorted = try allocator.alloc([]const u8, words.items.len);
 
     i = 0;
     for (buckets) |arrayList| {
         for (arrayList.items) |word| {
-            sorted_words[i] = word;
+            words_sorted[i] = word;
             i += 1;
         }
     }
 
-    return sorted_words;
+    return words_sorted;
 }
