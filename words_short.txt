@@ -21335,6 +21335,7 @@ shippers
 shipping
 ships
 shipwreck
+shirk
 shirking
 shirley
 shirt
@@ -24583,6 +24584,7 @@ trousers
 trout
 trove
 trow
+trowel
 truce
 truck
 truckers
