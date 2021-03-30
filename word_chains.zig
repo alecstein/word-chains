@@ -24,7 +24,13 @@ pub fn main() !void {
     var arena_alloc = &arena.allocator;
 
     var graph = try buildGraph(arena_alloc);
-    defer graph.deinit();
+    defer {
+        var it = graph.iterator();
+        while (it.next()) |kv| {
+            kv.value.deinit();
+        }
+        graph.deinit();
+    }
 
     // main loop
 
@@ -404,4 +410,15 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
     }
 
     return words_sorted;
+}
+
+test "buildGraph" {
+    var graph = try buildGraph(std.testing.allocator);
+    defer graph.deinit();
+
+    var it = graph.iterator();
+    while (it.next()) |kv| {
+        var arr = kv.value;
+        arr.deinit();
+    }
 }
