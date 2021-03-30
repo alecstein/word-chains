@@ -165,25 +165,46 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 
     // initialize a queue datastructure
 
-    const Q = std.TailQueue(std.ArrayList([]const u8));
+    // const Q = std.TailQueue(std.ArrayList([]const u8));
+    const Q = std.TailQueue([][]const u8);
     var queue = Q{};
 
-    var start_array = std.ArrayList([]const u8).init(allocator);
-    defer start_array.deinit();
+    // var queue = std.ArrayList([][]const u8).init(allocator);
+    // var start_array = std.ArrayList([]const u8).init(allocator);
+    // defer start_array.deinit();
 
-    try start_array.append(start);
+    var init_array = try allocator.alloc([]const u8, 1);
+    defer allocator.free(init_array);
 
-    var initial_node = try allocator.create(Q.Node);
-    initial_node.data = start_array;
-    queue.append(initial_node);
+    init_array[0] = start;
+
+    // try start_array.append(start);
+
+    // var initial_node = try allocator.create(Q.Node);
+    // initial_node.data = start_array;
+    // queue.append(initial_node);
+
+    var init_node = try allocator.create(Q.Node);
+    defer allocator.destroy(init_node);
+
+    init_node.data = init_array;
+    queue.append(init_node);
 
     var explored = std.BufSet.init(allocator);
     defer explored.deinit();
 
+    // defer {
+    //     var it = queue.first;
+    //     while (it) |node| : (it = node.next) {
+    //         node.data.deinit();
+    //         allocator.destroy(node);
+    //     }
+    // }
+
     defer {
         var it = queue.first;
         while (it) |node| : (it = node.next) {
-            node.data.deinit();
+            allocator.free(node.data);
             allocator.destroy(node);
         }
     }
@@ -191,21 +212,32 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
     while (queue.len > 0) {
 
         const path = queue.popFirst().?.data;
+        // const plen = path.items.len;
+        const plen = path.len;
 
         // get the last item in the path
-        const node = path.items[path.items.len - 1];
+        // const node = path.items[plen - 1];
+        const end_node = path[plen - 1];
 
-        if (!explored.exists(node)) {
-            const neighbors = graph.get(node).?;
+        if (!explored.exists(end_node)) {
+            const neighbors = graph.get(end_node).?;
 
             for (neighbors.items) |neighbor| {
 
-                var new_path = std.ArrayList([]const u8).init(allocator);
+                // var new_path = std.ArrayList([]const u8).init(allocator);
 
-                for (path.items) |item| {
-                    try new_path.append(item);
+                var new_path = try allocator.alloc([]const u8, plen + 1);
+                // for (path.items) |node, i| {
+                for (path) |node, i| {  
+                    new_path[i] = node;
                 }
-                try new_path.append(neighbor);
+                new_path[plen] = neighbor;
+
+                // for (path.items) |item| {
+                //     try new_path.append(item);
+                // }
+
+                // try new_path.append(neighbor);
 
                 var new_path_node = try allocator.create(Q.Node);
 
@@ -214,14 +246,15 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 
                 if (std.mem.eql(u8, neighbor, end)) {
                     print("Found the shortest path:\n\n", .{});
-                    for (new_path.items) |word| {
+                    // for (new_path.items) |word| {
+                    for (new_path) |word| {
                         print("{s}{s}{s}\n", .{ ansiGreen, word, ansiEnd });
                     }
                     return;
                 }
             }
         }
-        try explored.put(node);
+        try explored.put(end_node);
     }
     print("{s}No path found.{s}", .{ ansiRed, ansiEnd });
 }
