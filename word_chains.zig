@@ -295,8 +295,8 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
     // initialize each ArrayList
 
     var i: usize = 0;
-    while (i < maxlen) : (i +=1 ) {
-        var arrayList = std.ArrayList([]const u8).init(std.testing.allocator);
+    while (i < maxlen) : (i += 1 ) {
+        var arrayList = std.ArrayList([]const u8).init(allocator);
         buckets[i] = arrayList;
     }
 
