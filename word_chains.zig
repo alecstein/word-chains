@@ -1,5 +1,5 @@
 const std = @import("std");
-const input = @embedFile("words_long.txt");
+const input = @embedFile("words_med.txt");
 const stdin = std.io.getStdIn().reader();
 const print = std.debug.print;
 
@@ -269,7 +269,7 @@ fn unitEditDistance(start: []const u8, end: []const u8) bool {
     return true;
 }
 
-fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const u8)) !comptime [][]const u8 {
+fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const u8)) ![][]const u8 {
 
     // takes a list of strings and sorts them by length
     // uses the Bucket Sort algorithm
