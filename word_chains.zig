@@ -1,5 +1,5 @@
 const std = @import("std");
-const input = @embedFile("words_med.txt");
+const input = @embedFile("words_short.txt");
 const stdin = std.io.getStdIn().reader();
 const print = std.debug.print;
 
