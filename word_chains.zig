@@ -67,12 +67,13 @@ pub fn main() !void {
             continue;
         }
 
-        // check if the two words are the same
-
         if (std.mem.eql(u8, start, end)) {
             print("{s}Error:{s} {s} and {s} are the same word.", .{ ansiRed, ansiEnd, start, end });
             continue;
         }
+
+        // the arena allocator works fastest for the search algorithm.
+        // i'm not sure why.
 
         try breadthFirstSearch(arena_alloc, graph, start, end);
     }
@@ -418,7 +419,6 @@ test "buildGraph" {
 
     var it = graph.iterator();
     while (it.next()) |kv| {
-        var arr = kv.value;
-        arr.deinit();
+        kv.value.deinit();
     }
 }
