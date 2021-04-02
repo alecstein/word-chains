@@ -11,7 +11,6 @@ const ansiRed = "\x1b[31;1m";
 const ansiEnd = "\x1b[0m";
 
 pub fn main() !void {
-
     print("Starting Alec's {s}word-chain-finder{s}. Press Ctrl-C to exit.\n", .{ ansiCyan, ansiEnd });
     print("Usage: type in a start word and an end word to find the shortest path between them.\n", .{});
 
@@ -38,12 +37,11 @@ pub fn main() !void {
 
         // get user input and convert to lowercase
         // check if the words are in the dicitonary before starting search
-
         print("\nEnter start word: ", .{});
 
         var start_buf: [20]u8 = undefined;
         const start_raw = try stdin.readUntilDelimiterOrEof(&start_buf, '\n');
-        
+
         const start = try std.ascii.allocLowerString(gpa_alloc, start_raw.?);
         defer gpa_alloc.free(start);
 
@@ -80,7 +78,6 @@ pub fn main() !void {
 }
 
 fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]const u8)) {
-
     var graph = std.StringHashMap(std.ArrayList([]const u8)).init(allocator);
 
     // initialize list of words and put them in array
@@ -106,9 +103,9 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
     // we can sort the strings, and compare only the strings that
     // are at most one letter different in length
 
-    // start by sorting the words by length. we can use the 
-    // bucket sort algorithm (implemented below). this runs 
-    // in O(N) time. 
+    // start by sorting the words by length. we can use the
+    // bucket sort algorithm (implemented below). this runs
+    // in O(N) time.
 
     const words_sorted = try bucketSortString(allocator, words);
     defer allocator.free(words_sorted);
@@ -117,7 +114,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
     // which is one less (in length) than the current (long) word.
     // this changes as the long word grows
 
-    var k: usize = 0; 
+    var k: usize = 0;
 
     for (words_sorted) |long_word, i| {
 
@@ -125,7 +122,6 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
         // only with the words of equal length or of length one
         // less than it, not including itself. this avoids a complete
         // double for-loop.
-
         var j = k;
 
         // perc is percent complete, used to tell the user
@@ -133,11 +129,10 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
 
         const perc: usize = i * 100 / words_sorted.len;
         if (i % 1000 == 0) {
-           print("Calculating word distances: {d}%\r", .{perc});
+            print("Calculating word distances: {d}%\r", .{perc});
         }
 
         while (j < i) : (j += 1) {
-
             const short_word = words_sorted[j];
 
             // if the long word is more than 1 longer than the
@@ -148,12 +143,11 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
                 k += 1;
             }
 
-            // if the len(long_word) = len(short_word) (+1) 
+            // if the len(long_word) = len(short_word) (+1)
             // then check if they're one edit distance apart.
             // if so, add to the graph.
-
+            
             else if (unitEditDistance(long_word, short_word)) {
-
                 var longEntry = graph.getEntry(long_word).?;
                 try longEntry.value.append(short_word);
 
@@ -162,7 +156,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
             }
         }
     }
-    
+
     print("Calculating word distances: {s}DONE!{s}\r", .{ ansiGreen, ansiEnd });
 
     return graph;
@@ -171,10 +165,9 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
 fn QueueFIFO(comptime T: type) type {
 
     // simple FIFO queue largely copied from TailQueue in linked_list.zig.
-    // basic usage is with two functions: addFirst and popLast. 
+    // basic usage is with two functions: addFirst and popLast.
     // addFirst puts a Node at the front of the queue, and popLast
-    // returns and removes the last element of the queue. 
-
+    // returns and removes the last element of the queue.
     return struct {
         const Self = @This();
 
@@ -239,7 +232,7 @@ fn QueueFIFO(comptime T: type) type {
                 list.len = 1;
             }
         }
-        
+
         pub fn popLast(list: *Self) ?*Node {
             const last = list.last orelse return null;
             list.remove(last);
@@ -249,7 +242,6 @@ fn QueueFIFO(comptime T: type) type {
 }
 
 fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(std.ArrayList([]const u8)), start: []const u8, end: []const u8) !void {
-
     const Q = QueueFIFO([][]const u8);
     var queue = Q{};
 
@@ -276,20 +268,17 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
     }
 
     while (queue.len > 0) {
-
         const path = queue.popLast().?.data;
         const plen = path.len;
         const end_node = path[plen - 1];
 
         if (!explored.exists(end_node)) {
-
             const neighbors = graph.get(end_node).?;
 
             for (neighbors.items) |neighbor| {
-
                 var new_path = try allocator.alloc([]const u8, plen + 1);
 
-                for (path) |node, i| {  
+                for (path) |node, i| {
                     new_path[i] = node;
                 }
 
@@ -318,7 +307,6 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 fn strLenComp(context: void, stra: []const u8, strb: []const u8) bool {
 
     // used for sorting the list of words
-
     if (strb.len > stra.len) {
         return true;
     } else {
@@ -326,7 +314,7 @@ fn strLenComp(context: void, stra: []const u8, strb: []const u8) bool {
     }
 }
 
-fn unitEditDistance(start: []const u8, end: []const u8) bool {
+fn unitEditDistance(long: []const u8, short: []const u8) bool {
 
     // fast unit edit distance resolver
     // -----------------------------------
@@ -338,18 +326,17 @@ fn unitEditDistance(start: []const u8, end: []const u8) bool {
     // 3) long != short (at least one difference exists)
     // (1), (2), and (3) are imposed by the sorting
     // condition and while loop in buildGraph()
-
     var diff: u8 = 0;
     var i: usize = 0;
     var j: usize = 0;
 
-    while (i < start.len and j < end.len) : (i += 1) {
-        if (start[i] != end[j]) {
+    while (i < long.len and j < short.len) : (i += 1) {
+        if (long[i] != short[j]) {
             diff += 1;
             if (diff > 1) {
                 return false;
             }
-            if (start.len == end.len) {
+            if (long.len == short.len) {
                 j += 1;
             }
         } else {
@@ -365,8 +352,7 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
     // uses the Bucket Sort algorithm
 
     // start by getting the maximum string length (maxlen)
-
-    var maxlen: usize = 1; 
+    var maxlen: usize = 1;
     for (words.items) |word| {
         if (word.len > maxlen) {
             maxlen = word.len;
@@ -389,7 +375,7 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
     // an allocator.
 
     var i: usize = 0;
-    while (i < maxlen) : (i += 1 ) {
+    while (i < maxlen) : (i += 1) {
         var arrayList = std.ArrayList([]const u8).init(allocator);
         buckets[i] = arrayList;
     }
