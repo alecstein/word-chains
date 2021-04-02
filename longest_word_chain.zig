@@ -23,6 +23,8 @@ pub fn main() !void {
     var arena_alloc = &arena.allocator;
 
     var graph = try buildGraph(arena_alloc);
+
+    print("\nGraph built!\n", .{});
     defer {
         var it = graph.iterator();
         while (it.next()) |kv| {
@@ -31,57 +33,43 @@ pub fn main() !void {
         graph.deinit();
     }
 
-    // main loop
+    var words = std.ArrayList([]const u8).init(arena_alloc);
+    defer words.deinit();
 
-    while (true) {
+    // read the words from the file and put them into the graph (graph)
+    // and the words list (words)
+    // also: initialize the graph with empty arrays
 
-        // get user input and convert to lowercase
-        // check if the words are in the dicitonary before starting search
-        print("\nEnter start word: ", .{});
-
-        var start_buf: [20]u8 = undefined;
-        const start_raw = try stdin.readUntilDelimiterOrEof(&start_buf, '\n');
-
-        const start = try std.ascii.allocLowerString(gpa_alloc, start_raw.?);
-        defer gpa_alloc.free(start);
-
-        // check if input is in graph
-
-        if (graph.get(start) == null) {
-            print("{s}Error:{s} {s} is not in the dictionary.", .{ ansiRed, ansiEnd, start });
-            continue;
-        }
-
-        print("Enter end word: ", .{});
-
-        var end_buf: [20]u8 = undefined;
-        const end_raw = try stdin.readUntilDelimiterOrEof(&end_buf, '\n');
-
-        const end = try std.ascii.allocLowerString(gpa_alloc, end_raw.?);
-        defer gpa_alloc.free(end);
-
-        if (graph.get(end) == null) {
-            print("{s}Error:{s} {s} is not in the dictionary.", .{ ansiRed, ansiEnd, end });
-            continue;
-        }
-
-        if (std.mem.eql(u8, start, end)) {
-            print("{s}Error:{s} {s} and {s} are the same word.", .{ ansiRed, ansiEnd, start, end });
-            continue;
-        }
-
-        // the arena allocator works fastest for the search algorithm.
-        // i'm not sure why.
-
-        try breadthFirstSearch(arena_alloc, graph, start, end);
+    var file_it = std.mem.tokenize(input, "\n");
+    while (file_it.next()) |word| {
+        try words.append(word);
     }
+
+    const words_sorted = try bucketSortString(arena_alloc, words);
+    defer arena_alloc.free(words_sorted);
+
+    var diameter: usize = 0;
+    for (words_sorted) |word1, i| {
+
+        if (i > 10) {
+            break;
+        }
+        
+        for (words_sorted) |word2| {
+            // print("word1: {s}, word2: {s}\n", .{word1, word2});   
+            const trial_diameter = try breadthFirstSearchLen(arena_alloc, graph, word1, word2);
+            if (trial_diameter > diameter) {
+                diameter = trial_diameter;
+                print("trial diameter: {s} to {s}\n", .{word1, word2});
+            }
+        }
+    }        
 }
 
 fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]const u8)) {
 
     // initialize list of words and put them in array
     // note: wordlist contains no duplicates
-
     var words = std.ArrayList([]const u8).init(allocator);
     defer words.deinit();
 
@@ -123,7 +111,6 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
         // only with the words of equal length or of length one
         // less than it, not including itself. this avoids a complete
         // double for-loop.
-
         var j = k;
 
         // perc is percent complete, used to tell the user
@@ -148,7 +135,6 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
             // if the len(long_word) = len(short_word) (+1)
             // then check if they're one edit distance apart.
             // if so, add to the graph.
-
             else if (unitEditDistance(long_word, short_word)) {
                 var longEntry = graph.getEntry(long_word).?;
                 try longEntry.value.append(short_word);
@@ -243,7 +229,7 @@ fn QueueFIFO(comptime T: type) type {
     };
 }
 
-fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(std.ArrayList([]const u8)), start: []const u8, end: []const u8) !void {
+fn breadthFirstSearchLen(allocator: *std.mem.Allocator, graph: std.StringHashMap(std.ArrayList([]const u8)), start: []const u8, end: []const u8) !usize {
     const Q = QueueFIFO([][]const u8);
     var queue = Q{};
 
@@ -259,18 +245,23 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
     queue.addFirst(init_node);
 
     var explored = std.BufSet.init(allocator);
-    defer explored.deinit();
+    explored.deinit();
 
     defer {
         var it = queue.first;
         while (it) |node| : (it = node.next) {
-            allocator.free(node.data);
+            // allocator.free(node.data); // memory leak?
             allocator.destroy(node);
         }
     }
 
     while (queue.len > 0) {
-        const path = queue.popLast().?.data;
+        const queue_el = queue.popLast().?;
+        defer {
+            allocator.free(queue_el.data);
+            allocator.destroy(queue_el);
+        }
+        const path = queue_el.data;
         const plen = path.len;
         const end_node = path[plen - 1];
 
@@ -278,6 +269,7 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
             const neighbors = graph.get(end_node).?;
 
             for (neighbors.items) |neighbor| {
+
                 var new_path = try allocator.alloc([]const u8, plen + 1);
 
                 for (path) |node, i| {
@@ -292,18 +284,17 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
                 queue.addFirst(new_path_node);
 
                 if (std.mem.eql(u8, neighbor, end)) {
-                    print("Found the shortest path:\n\n", .{});
+                    // print("Found the shortest path:\n\n", .{});
 
                     for (new_path) |word| {
-                        print("{s}{s}{s}\n", .{ ansiGreen, word, ansiEnd });
+                        return new_path.len;
                     }
-                    return;
                 }
             }
         }
         try explored.put(end_node);
     }
-    print("{s}No path found.{s}", .{ ansiRed, ansiEnd });
+    return 0;
 }
 
 fn strLenComp(context: void, stra: []const u8, strb: []const u8) bool {
@@ -401,14 +392,41 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
     return words_sorted;
 }
 
-test "buildGraph" {
-    var graph = try buildGraph(std.testing.allocator);
-    defer graph.deinit();
+// test "findDiam" {
 
+//     var graph = try buildGraph(std.testing.allocator);
+//     defer {
+//     var it = graph.iterator();
+//         while (it.next()) |kv| {
+//             kv.value.deinit();
+//         }
+//         graph.deinit();
+//     }
+
+//     var it = graph.iterator();
+//     var i: usize = 0;
+//     while (it.next()) |kv| {
+//         var it2 = graph.iterator();
+//         i += 1;
+//         if (i > 10) {
+//             break;
+//         }
+//         while (it2.next()) |kv2| {
+//             const x = try breadthFirstSearchLen(std.testing.allocator, graph, kv.key, kv2.key);
+//         }
+//     }
+// }
+
+test "BFS" {
+    var graph = try buildGraph(std.testing.allocator);
+
+    defer {
     var it = graph.iterator();
-    while (it.next()) |kv| {
-        kv.value.deinit();
+        while (it.next()) |kv| {
+            kv.value.deinit();
+        }
+        graph.deinit();
     }
 
-    try breadthFirstSearch(std.testing.allocator, graph, "hello", "man");
+    const x = try breadthFirstSearchLen(std.testing.allocator, graph, "start", "end");
 }
