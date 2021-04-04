@@ -82,40 +82,40 @@ fn buildWordList(allocator: *std.mem.Allocator) ![][]const u8 {
         try words.append(word);
     }
 
-    const words_sorted = try bucketSortString(allocator, words);
-    return words_sorted; 
+    const wordlist = try bucketSortString(allocator, words);
+    return wordlist; 
 }
 
 fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]const u8)) {
 
-    const words = try buildWordList(allocator);
-    defer allocator.free(words);
+    const wordlist = try buildWordList(allocator);
+    defer allocator.free(wordlist);
 
-    for (words) |word| {
-        var empty_arr = std.ArrayList([]const u8).init(allocator);
-        try graph.put(word, empty_arr);
+    var graph = std.StringHashMap(std.ArrayList([]const u8)).init(allocator);
+
+    for (wordlist) |word| {
+        var empty_arraylist = std.ArrayList([]const u8).init(allocator);
+        try graph.put(word, empty_arraylist);
     }
 
-    // fast graph-building algorithm
-    // ------------------------------
-    // if we know that the strings are at most distance one apart
+    // If you want to build the graph quickly... you need a
+    // Fast Graph-Building Algorithm (or "FigBA")
+    // ------------------------------------------
+    // Doing a double-for loop over ~50k variables is painfully slow.
+    // If we know that the strings are at most distance one apart
     // we can sort the strings, and compare only the strings that
-    // are at most one letter different in length
+    // are at most one letter different in length.
 
-    // start by sorting the words by length. we can use the
-    // bucket sort algorithm (implemented below). this runs
-    // in O(N) time.
+    // Start by sorting the words by length. We can use the
+    // bucket sort algorithm (implemented below). This runs
+    // in O(N) time. 
 
-    const words_sorted = try bucketSortString(allocator, words);
-    defer allocator.free(words_sorted);
-
-    // k keeps track of the first word in the sorted array
-    // which is one less (in length) than the current (long) word.
-    // this changes as the long word grows
+    // Then introduct a variable "k" to keep track of the smallest
+    // word that's length one away from the current word being tested.
 
     var k: usize = 0;
 
-    for (words_sorted) |long_word, i| {
+    for (wordlist) |long_word, i| {
 
         // j starts at k and finishes at i-1. a word is compared
         // only with the words of equal length or of length one
@@ -126,15 +126,15 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
         // perc is percent complete, used to tell the user
         // how far along the graph is to being built
 
-        const perc: usize = i * 100 / words_sorted.len;
+        const perc: usize = i * 100 / wordlist.len;
         if (i % 1000 == 0) {
             print("Calculating word distances: {d}%\r", .{perc});
         }
 
         while (j < i) : (j += 1) {
-            const short_word = words_sorted[j];
+            const short_word = wordlist[j];
 
-            // if the long word is more than 1 longer than the
+            // If the long word is more than 1 longer than the
             // short word, keep increasing k (continuing through
             // this loop also increases j).
 
@@ -142,9 +142,10 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
                 k += 1;
             }
 
-            // if the len(long_word) = len(short_word) (+1)
+            // If len(long_word) = len(short_word) (or +1)
             // then check if they're one edit distance apart.
             // if so, add to the graph.
+
             else if (unitEditDistance(long_word, short_word)) {
                 var longEntry = graph.getEntry(long_word).?;
                 try longEntry.value.append(short_word);
@@ -272,7 +273,6 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 
 fn strLenComp(context: void, stra: []const u8, strb: []const u8) bool {
 
-    // used for sorting the list of words
     if (strb.len > stra.len) {
         return true;
     } else {
@@ -282,16 +282,17 @@ fn strLenComp(context: void, stra: []const u8, strb: []const u8) bool {
 
 fn unitEditDistance(long: []const u8, short: []const u8) bool {
 
-    // fast unit edit distance resolver
+    // Fast Unit Edit Distance Decider (F.E.U.D(d))
     // -----------------------------------
-    // returns true if long and short are
-    // one edit apart (levenshtein).
-    // assumptions:
+    // Returns true if long and short are
+    // one (Levenshtein) edit apart.
+    // Assumptions:
     // 1) long.len >= short.len
     // 2) long.len - short.len <= 1
     // 3) long != short (at least one difference exists)
     // (1), (2), and (3) are imposed by the sorting
     // condition and while loop in buildGraph()
+
     var diff: u8 = 0;
     var i: usize = 0;
     var j: usize = 0;
@@ -314,10 +315,9 @@ fn unitEditDistance(long: []const u8, short: []const u8) bool {
 
 fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const u8)) ![][]const u8 {
 
-    // takes a list of strings and sorts them by length.
-    // uses the Bucket Sort algorithm
+    // Takes a list of strings and sorts them by length.
 
-    // start by getting the maximum string length (maxlen)
+    // Start by getting the maximum string length (maxlen)
     var maxlen: usize = 1;
     for (words.items) |word| {
         if (word.len > maxlen) {
@@ -325,7 +325,7 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
         }
     }
 
-    // then make the buckets. each one is a variable-length
+    // Then make the buckets. each one is a variable-length
     // array.
 
     var buckets = try allocator.alloc(std.ArrayList([]const u8), maxlen);
@@ -336,17 +336,13 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
         allocator.free(buckets);
     }
 
-    // bucket 0 corresponds to length 1 and so on.
-    // each std.ArrayList needs to be initialized with
-    // an allocator.
+    // Bucket 0 corresponds to length 1 and so on.
 
     var i: usize = 0;
     while (i < maxlen) : (i += 1) {
         var arrayList = std.ArrayList([]const u8).init(allocator);
         buckets[i] = arrayList;
     }
-
-    // put the words in the buckets
 
     for (words.items) |word| {
         try buckets[word.len - 1].append(word);
