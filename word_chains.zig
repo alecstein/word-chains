@@ -88,21 +88,10 @@ fn buildWordList(allocator: *std.mem.Allocator) ![][]const u8 {
 
 fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]const u8)) {
 
-    // initialize list of words and put them in array
-    // note: wordlist contains no duplicates
+    const words = try buildWordList(allocator);
+    defer allocator.free(words);
 
-    var words = std.ArrayList([]const u8).init(allocator);
-    defer words.deinit();
-
-    // read the words from the file and put them into the graph (graph)
-    // and the words list (words)
-    // also: initialize the graph with empty arrays
-
-    var graph = std.StringHashMap(std.ArrayList([]const u8)).init(allocator);
-
-    var file_it = std.mem.tokenize(input, "\n");
-    while (file_it.next()) |word| {
-        try words.append(word);
+    for (words) |word| {
         var empty_arr = std.ArrayList([]const u8).init(allocator);
         try graph.put(word, empty_arr);
     }
@@ -452,19 +441,19 @@ test "memory leak" {
     }
 }
 
-// test "buildGraph memory leak" {
+test "buildGraph memory leak" {
 
-//     var graph = try buildGraph(std.testing.allocator);
-//     defer {
-//         var it = graph.iterator();
-//         while (it.next()) |kv| {
-//             kv.value.deinit();
-//         }
-//         graph.deinit();
-//     }
+    var graph = try buildGraph(std.testing.allocator);
+    defer {
+        var it = graph.iterator();
+        while (it.next()) |kv| {
+            kv.value.deinit();
+        }
+        graph.deinit();
+    }
 
-//     try breadthFirstSearch(std.testing.allocator, graph, "test", "end");
-// }
+    try breadthFirstSearch(std.testing.allocator, graph, "test", "end");
+}
 
 test "building the word list" {
     const x = try buildWordList(std.testing.allocator);
