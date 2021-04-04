@@ -72,7 +72,7 @@ pub fn main() !void {
     }
 }
 
-fn buildWordList(allocator: *std.mem.Allocator) ![][]const u8 {
+fn buildSortedWordList(allocator: *std.mem.Allocator) ![][]const u8 {
 
     var words = std.ArrayList([]const u8).init(allocator);
     defer words.deinit();
@@ -88,7 +88,7 @@ fn buildWordList(allocator: *std.mem.Allocator) ![][]const u8 {
 
 fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]const u8)) {
 
-    const wordlist = try buildWordList(allocator);
+    const wordlist = try buildSortedWordList(allocator);
     defer allocator.free(wordlist);
 
     var graph = std.StringHashMap(std.ArrayList([]const u8)).init(allocator);
