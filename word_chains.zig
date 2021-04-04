@@ -455,3 +455,7 @@ test "building the word list" {
     const x = try buildWordList(std.testing.allocator);
     defer std.testing.allocator.free(x);
 }
+
+test "memory leak with arena allocator" {
+    try main();
+}
