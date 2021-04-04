@@ -646,7 +646,6 @@ ajar
 ake
 akin
 al
-ala
 alabama
 alacrity
 aladdin
@@ -6199,6 +6198,7 @@ demeans
 dementia
 demilitarized
 demise
+demo
 democracy
 democrat
 democratic
@@ -14180,7 +14180,6 @@ makeshift
 makeup
 making
 makings
-mal
 maladies
 malady
 malaga
@@ -14574,7 +14573,6 @@ megabit
 megabyte
 megabytes
 megahertz
-mel
 melancholy
 melange
 melanoma

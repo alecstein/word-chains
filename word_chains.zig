@@ -37,6 +37,7 @@ pub fn main() !void {
 
         // get user input and convert to lowercase
         // check if the words are in the dicitonary before starting search
+
         print("\nEnter start word: ", .{});
 
         var start_buf: [20]u8 = undefined;
@@ -123,7 +124,6 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
         // only with the words of equal length or of length one
         // less than it, not including itself. this avoids a complete
         // double for-loop.
-
         var j = k;
 
         // perc is percent complete, used to tell the user
@@ -148,7 +148,6 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
             // if the len(long_word) = len(short_word) (+1)
             // then check if they're one edit distance apart.
             // if so, add to the graph.
-
             else if (unitEditDistance(long_word, short_word)) {
                 var longEntry = graph.getEntry(long_word).?;
                 try longEntry.value.append(short_word);
@@ -164,17 +163,11 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
     return graph;
 }
 
-fn QueueFIFO(comptime T: type) type {
-
-    // simple FIFO queue largely copied from TailQueue in linked_list.zig.
-    // basic usage is with two functions: addFirst and popLast.
-    // addFirst puts a Node at the front of the queue, and popLast
-    // returns and removes the last element of the queue.
+fn Queue(comptime T: type) type {
     return struct {
         const Self = @This();
 
         pub const Node = struct {
-            prev: ?*Node = null,
             next: ?*Node = null,
             data: comptime T,
         };
@@ -183,116 +176,90 @@ fn QueueFIFO(comptime T: type) type {
         last: ?*Node = null,
         len: usize = 0,
 
-        pub fn insertBefore(list: *Self, node: *Node, new_node: *Node) void {
-            new_node.next = node;
-            if (node.prev) |prev_node| {
-                // Intermediate node.
-                new_node.prev = prev_node;
-                prev_node.next = new_node;
-            } else {
-                // First element of the list.
-                new_node.prev = null;
-                list.first = new_node;
+        pub fn insert(list: *Self, node: *Node) void {
+            if (list.len == 0) {
+                list.first = node;
             }
-            node.prev = new_node;
-
+            else {
+                list.last.?.next = node;
+            }
+            list.last = node;
             list.len += 1;
         }
 
-        pub fn remove(list: *Self, node: *Node) void {
-            if (node.prev) |prev_node| {
-                // Intermediate node.
-                prev_node.next = node.next;
-            } else {
-                // First element of the list.
-                list.first = node.next;
+        pub fn pop(list: *Self) ?*Node {
+            const first = list.first orelse return null;
+            if (list.len == 1) {
+                list.first = null;
+                list.last = null;
             }
-
-            if (node.next) |next_node| {
-                // Intermediate node.
-                next_node.prev = node.prev;
-            } else {
-                // Last element of the list.
-                list.last = node.prev;
+            else {
+                list.first = first.next;
             }
-
             list.len -= 1;
-            std.debug.assert(list.len == 0 or (list.first != null and list.last != null));
-        }
-
-        pub fn addFirst(list: *Self, new_node: *Node) void {
-            if (list.first) |first| {
-                // Insert before first.
-                list.insertBefore(first, new_node);
-            } else {
-                // Empty list.
-                list.first = new_node;
-                list.last = new_node;
-                new_node.prev = null;
-                new_node.next = null;
-
-                list.len = 1;
-            }
-        }
-
-        pub fn popLast(list: *Self) ?*Node {
-            const last = list.last orelse return null;
-            list.remove(last);
-            return last;
+            return first;
         }
     };
 }
 
 fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(std.ArrayList([]const u8)), start: []const u8, end: []const u8) !void {
-    const Q = QueueFIFO([][]const u8);
+    const Q = Queue([][]const u8);
     var queue = Q{};
-
-    var init_path = try allocator.alloc([]const u8, 1);
-    defer allocator.free(init_path);
-
-    var init_node = try allocator.create(Q.Node);
-    defer allocator.destroy(init_node);
-
-    init_path[0] = start;
-
-    init_node.data = init_path;
-    queue.addFirst(init_node);
-
-    var explored = std.BufSet.init(allocator);
-    defer explored.deinit();
-
     defer {
-        var it = queue.first;
-        while (it) |node| : (it = node.next) {
+        while (queue.pop()) |node| {
             allocator.free(node.data);
             allocator.destroy(node);
         }
     }
 
-    while (queue.len > 0) {
-        const path = queue.popLast().?.data;
-        const plen = path.len;
-        const end_node = path[plen - 1];
+    var init_path = try allocator.alloc([]const u8, 1);
+    init_path[0] = start;
 
-        if (!explored.exists(end_node)) {
-            const neighbors = graph.get(end_node).?;
+    var init_node = try allocator.create(Q.Node);
+    init_node.data = init_path;
+
+    // There's no need to free/destroy the initial data/node,
+    // because the For loop takes care of it on the first pass
+    // through.
+    // defer allocator.free(init_path);
+    // defer allocator.destroy(init_node);
+
+    queue.insert(init_node);
+
+    var explored = std.BufSet.init(allocator);
+    defer explored.deinit();
+
+    while (queue.len > 0) {
+        const node = queue.pop().?;
+        defer {
+            allocator.free(node.data);
+            allocator.destroy(node);
+        }
+
+        const path = node.data;
+        const last_vertex = path[path.len - 1];
+
+        if (!explored.exists(last_vertex)) {
+
+            const neighbors = graph.get(last_vertex).?;
 
             for (neighbors.items) |neighbor| {
-                var new_path = try allocator.alloc([]const u8, plen + 1);
 
-                for (path) |node, i| {
-                    new_path[i] = node;
+                var new_path = try allocator.alloc([]const u8, path.len + 1);
+
+                for (path) |vertex, i| {
+                    new_path[i] = vertex;
                 }
 
-                new_path[plen] = neighbor;
+                new_path[path.len] = neighbor;
 
                 var new_path_node = try allocator.create(Q.Node);
 
                 new_path_node.data = new_path;
-                queue.addFirst(new_path_node);
+                queue.insert(new_path_node);
 
                 if (std.mem.eql(u8, neighbor, end)) {
-                    print("Found the shortest path:\n\n", .{});
+                    print("Found the shortest path. Length: {s}{}{s}\n\n", .{ ansiGreen, new_path.len, ansiEnd});
 
                     for (new_path) |word| {
                         print("{s}{s}{s}\n", .{ ansiGreen, word, ansiEnd });
@@ -301,7 +268,7 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
                 }
             }
         }
-        try explored.put(end_node);
+        try explored.put(last_vertex);
     }
     print("{s}No path found.{s}", .{ ansiRed, ansiEnd });
 }
@@ -401,14 +368,92 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
     return words_sorted;
 }
 
-test "buildGraph" {
-    var graph = try buildGraph(std.testing.allocator);
-    defer graph.deinit();
 
-    var it = graph.iterator();
-    while (it.next()) |kv| {
-        kv.value.deinit();
+test "pop on an empty queue returns null" {
+    const Q = Queue(u8);
+    var queue = Q{};
+    std.testing.expect(queue.pop() == null);
+}
+test "pop on a queue with one element returns that element" {
+    const Q = Queue(u8);
+    var queue = Q{};
+    var node = try std.testing.allocator.create(Q.Node);
+    defer std.testing.allocator.destroy(node);
+    node.data = 9;
+    queue.insert(node);
+    const x = queue.pop();
+    std.testing.expect(x == node);
+    std.testing.expect(x.?.data == 9);
+}
+test "size of an empty queue is 0" {
+    const Q = Queue(u8);
+    var queue = Q{};
+    std.testing.expect(queue.len == 0);
+}
+test "size of queue with one element inserted is one" {
+    const Q = Queue(u8);
+    var queue = Q{};
+    var node = try std.testing.allocator.create(Q.Node);
+    defer std.testing.allocator.destroy(node);
+    node.data = 9;
+    queue.insert(node);
+    std.testing.expect(queue.len == 1);
+
+}
+test "first in is first out" {
+    const Q = Queue(u8);
+    var queue = Q{};
+    var node1 = try std.testing.allocator.create(Q.Node);
+    defer std.testing.allocator.destroy(node1);
+    var node2 = try std.testing.allocator.create(Q.Node);
+    defer std.testing.allocator.destroy(node2);
+    var node3 = try std.testing.allocator.create(Q.Node);
+    defer std.testing.allocator.destroy(node3);
+    node1.data = 1;
+    node2.data = 2;
+    node3.data = 3;
+    queue.insert(node1);
+    queue.insert(node2);
+    queue.insert(node3);
+    std.testing.expect(queue.pop() == node1);
+    print("ok1", .{});
+    std.testing.expect(queue.pop() == node2);
+    print("ok2", .{});
+    std.testing.expect(queue.pop() == node3);
+    print("ok3", .{});
+    std.testing.expect(queue.pop() == null);
+}
+
+test "memory leak" {
+    const Q = Queue(u8);
+    var queue = Q{};
+    var node1 = try std.testing.allocator.create(Q.Node);
+    // defer std.testing.allocator.destroy(node1);
+    var node2 = try std.testing.allocator.create(Q.Node);
+    // defer std.testing.allocator.destroy(node2);
+    var node3 = try std.testing.allocator.create(Q.Node);
+    // defer std.testing.allocator.destroy(node3);
+    node1.data = 1;
+    node2.data = 2;
+    node3.data = 3;
+    queue.insert(node1);
+    queue.insert(node2);
+    queue.insert(node3);
+    while (queue.pop()) |node| {
+        std.testing.allocator.destroy(node);
+    }
+}
+
+test "buildGraph memory leak" {
+
+    var graph = try buildGraph(std.testing.allocator);
+    defer {
+        var it = graph.iterator();
+        while (it.next()) |kv| {
+            kv.value.deinit();
+        }
+        graph.deinit();
     }
 
-    try breadthFirstSearch(std.testing.allocator, graph, "hello", "man");
+    try breadthFirstSearch(std.testing.allocator, graph, "test", "end");
 }
