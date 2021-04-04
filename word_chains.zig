@@ -35,9 +35,6 @@ pub fn main() !void {
 
     while (true) {
 
-        // get user input and convert to lowercase
-        // check if the words are in the dicitonary before starting search
-
         print("\nEnter start word: ", .{});
 
         var start_buf: [20]u8 = undefined;
@@ -45,8 +42,6 @@ pub fn main() !void {
 
         const start = try std.ascii.allocLowerString(gpa_alloc, start_raw.?);
         defer gpa_alloc.free(start);
-
-        // check if input is in graph
 
         if (graph.get(start) == null) {
             print("{s}Error:{s} {s} is not in the dictionary.", .{ ansiRed, ansiEnd, start });
@@ -71,11 +66,24 @@ pub fn main() !void {
             continue;
         }
 
-        // the arena allocator works fastest for the search algorithm.
-        // i'm not sure why.
+        // Not sure why the arena allocator works better than the GPA.
 
         try breadthFirstSearch(arena_alloc, graph, start, end);
     }
+}
+
+fn buildWordList(allocator: *std.mem.Allocator) ![][]const u8 {
+
+    var words = std.ArrayList([]const u8).init(allocator);
+    defer words.deinit();
+
+    var file_it = std.mem.tokenize(input, "\n");
+    while (file_it.next()) |word| {
+        try words.append(word);
+    }
+
+    const words_sorted = try bucketSortString(allocator, words);
+    return words_sorted; 
 }
 
 fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]const u8)) {
@@ -220,7 +228,7 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 
     // There's no need to free/destroy the initial data/node,
     // because the For loop takes care of it on the first pass
-    // through.
+    // through. So these two lines are unnecessary:
     // defer allocator.free(init_path);
     // defer allocator.destroy(init_node);
 
@@ -444,16 +452,21 @@ test "memory leak" {
     }
 }
 
-test "buildGraph memory leak" {
+// test "buildGraph memory leak" {
 
-    var graph = try buildGraph(std.testing.allocator);
-    defer {
-        var it = graph.iterator();
-        while (it.next()) |kv| {
-            kv.value.deinit();
-        }
-        graph.deinit();
-    }
+//     var graph = try buildGraph(std.testing.allocator);
+//     defer {
+//         var it = graph.iterator();
+//         while (it.next()) |kv| {
+//             kv.value.deinit();
+//         }
+//         graph.deinit();
+//     }
 
-    try breadthFirstSearch(std.testing.allocator, graph, "test", "end");
+//     try breadthFirstSearch(std.testing.allocator, graph, "test", "end");
+// }
+
+test "building the word list" {
+    const x = try buildWordList(std.testing.allocator);
+    defer std.testing.allocator.free(x);
 }
