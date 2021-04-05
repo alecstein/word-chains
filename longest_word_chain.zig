@@ -1,7 +1,7 @@
 const std = @import("std");
 const input = @embedFile("words_short.txt");
 const stdin = std.io.getStdIn().reader();
-const print = std.debug.print;
+const print = std.io.getStdOut().writer().print;
 
 // escape codes used for printing
 
@@ -11,6 +11,9 @@ const ansiRed = "\x1b[31;1m";
 const ansiEnd = "\x1b[0m";
 
 pub fn main() !void {
+
+    try print("Finding the largest shortest path (the diameter) of the word graph.\n", .{});
+    try print("This program will loop through the graph, printing out progressively larger trial diameters, until it finds the largest one.\n\n", .{});
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var gpa_alloc = &gpa.allocator;
@@ -26,32 +29,19 @@ pub fn main() !void {
 
     const wordlist = try buildSortedWordList(gpa_alloc);
 
-    // var arena = std.heap.ArenaAllocator.init(gpa_alloc);
-    var arena = std.heap.ArenaAllocator.init(gpa_alloc);
-    defer arena.deinit();
-
     var maxlen: usize = 0;
-
-    for (wordlist) |word| {
-        print("word: {s}\r", .{word});
-        var arena2 = std.heap.ArenaAllocator.init(gpa_alloc);
-        defer arena2.deinit();
-        const trial_diam = try longestShortestPath(&arena2.allocator, graph, word);
-        var len: usize = 0;
-        for (trial_diam) |vertex| {
-            if (!std.mem.eql(u8, vertex,"")) {
-                len += 1;
+    for (wordlist) |start_word| {
+        try print("starting word: {s}{s}{s}\r", .{ansiRed, start_word, ansiEnd});
+        var arena = std.heap.ArenaAllocator.init(gpa_alloc);
+        defer arena.deinit();
+        const trial_diameter = try longestShortestPath(&arena.allocator, graph, start_word);
+        if (trial_diameter.len > maxlen) {
+            maxlen = trial_diameter.len;
+            try print("\nChain length: {s}{}{s}\n\n", .{ansiGreen, maxlen, ansiEnd});
+            for (trial_diameter) |chain_word| {
+                try print("{s}{s}{s}\n", .{ansiGreen, chain_word, ansiEnd});
             }
-        }
-        if (maxlen < len) {
-            maxlen = len;
-            print("word: {s}\n", .{word});
-            print("maxlen: {}\n", .{maxlen});
-            for (trial_diam) |vertex| {
-                if (!std.mem.eql(u8, vertex,"")) {
-                    print("{s}\n", .{vertex});
-                }
-            }
+            try print("\n",.{});
         }
     }
 }
@@ -197,15 +187,15 @@ fn longestShortestPath(allocator: *std.mem.Allocator, graph: std.StringHashMap(s
     var explored = std.BufSet.init(allocator);
     defer explored.deinit();
 
-    var max_path = try allocator.alloc([]const u8, 100);
-    for (max_path) |item, i| {
-        max_path[i] = "";
-    }
+    var shortest_paths = std.ArrayList([][]const u8).init(allocator);
+    try shortest_paths.append(init_path);
+
 
     while (queue.len > 0) {
+
         const node = queue.pop().?;
         defer {
-            allocator.free(node.data);
+            // allocator.free(node.data);
             allocator.destroy(node);
         }
 
@@ -214,70 +204,7 @@ fn longestShortestPath(allocator: *std.mem.Allocator, graph: std.StringHashMap(s
 
         if (!explored.exists(last_vertex)) {
 
-            const neighbors = graph.get(last_vertex).?;
-
-            for (neighbors.items) |neighbor| {
-
-                var new_path = try allocator.alloc([]const u8, path.len + 1);
-
-                for (path) |vertex, i| {
-                    max_path[i] = vertex;
-                    new_path[i] = vertex;
-                }
-
-                new_path[path.len] = neighbor;
-                max_path[path.len] = neighbor;
-
-                var new_path_node = try allocator.create(Q.Node);
-
-                new_path_node.data = new_path;
-                queue.insert(new_path_node);
-            }
-        }
-        try explored.put(last_vertex);
-    }
-
-    return max_path;
-}
-
-fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(std.ArrayList([]const u8)), start: []const u8, end: []const u8) !?[][]const u8 {
-    const Q = Queue([][]const u8);
-    var queue = Q{};
-    defer {
-        while (queue.pop()) |node| {
-            allocator.free(node.data);
-            allocator.destroy(node);
-        }
-    }
-
-    var init_path = try allocator.alloc([]const u8, 1);
-    init_path[0] = start;
-
-    var init_node = try allocator.create(Q.Node);
-    init_node.data = init_path;
-
-    // There's no need to free/destroy the initial data/node,
-    // because the For loop takes care of it on the first pass
-    // through. So these two lines are unnecessary:
-    // defer allocator.free(init_path);
-    // defer allocator.destroy(init_node);
-
-    queue.insert(init_node);
-
-    var explored = std.BufSet.init(allocator);
-    defer explored.deinit();
-
-    while (queue.len > 0) {
-        const node = queue.pop().?;
-        defer {
-            allocator.free(node.data);
-            allocator.destroy(node);
-        }
-
-        const path = node.data;
-        const last_vertex = path[path.len - 1];
-
-        if (!explored.exists(last_vertex)) {
+            try shortest_paths.append(path);
 
             const neighbors = graph.get(last_vertex).?;
 
@@ -295,18 +222,22 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
 
                 new_path_node.data = new_path;
                 queue.insert(new_path_node);
-
-                if (std.mem.eql(u8, neighbor, end)) {
-                    // ?
-                    // allocator.free(node.data);
-                    // allocator.destroy(node);
-                    return new_path;
-                }
             }
         }
         try explored.put(last_vertex);
     }
-    return null;
+
+    const longest_shortest_path = shortest_paths.items[shortest_paths.items.len-1];
+    for (shortest_paths.items) |item, i| {
+        if (i == shortest_paths.items.len - 1) {
+            break;
+        }
+        else {
+            allocator.free(item);
+        }
+    }
+
+    return longest_shortest_path;
 }
 
 fn unitEditDistance(long: []const u8, short: []const u8) bool {
@@ -391,80 +322,80 @@ fn bucketSortString(allocator: *std.mem.Allocator, words: std.ArrayList([]const 
 }
 
 
-test "pop on an empty queue returns null" {
-    const Q = Queue(u8);
-    var queue = Q{};
-    std.testing.expect(queue.pop() == null);
-}
-test "pop on a queue with one element returns that element" {
-    const Q = Queue(u8);
-    var queue = Q{};
-    var node = try std.testing.allocator.create(Q.Node);
-    defer std.testing.allocator.destroy(node);
-    node.data = 9;
-    queue.insert(node);
-    const x = queue.pop();
-    std.testing.expect(x == node);
-    std.testing.expect(x.?.data == 9);
-}
-test "size of an empty queue is 0" {
-    const Q = Queue(u8);
-    var queue = Q{};
-    std.testing.expect(queue.len == 0);
-}
-test "size of queue with one element inserted is one" {
-    const Q = Queue(u8);
-    var queue = Q{};
-    var node = try std.testing.allocator.create(Q.Node);
-    defer std.testing.allocator.destroy(node);
-    node.data = 9;
-    queue.insert(node);
-    std.testing.expect(queue.len == 1);
+// test "pop on an empty queue returns null" {
+//     const Q = Queue(u8);
+//     var queue = Q{};
+//     std.testing.expect(queue.pop() == null);
+// }
+// test "pop on a queue with one element returns that element" {
+//     const Q = Queue(u8);
+//     var queue = Q{};
+//     var node = try std.testing.allocator.create(Q.Node);
+//     defer std.testing.allocator.destroy(node);
+//     node.data = 9;
+//     queue.insert(node);
+//     const x = queue.pop();
+//     std.testing.expect(x == node);
+//     std.testing.expect(x.?.data == 9);
+// }
+// test "size of an empty queue is 0" {
+//     const Q = Queue(u8);
+//     var queue = Q{};
+//     std.testing.expect(queue.len == 0);
+// }
+// test "size of queue with one element inserted is one" {
+//     const Q = Queue(u8);
+//     var queue = Q{};
+//     var node = try std.testing.allocator.create(Q.Node);
+//     defer std.testing.allocator.destroy(node);
+//     node.data = 9;
+//     queue.insert(node);
+//     std.testing.expect(queue.len == 1);
 
-}
-test "first in is first out" {
-    const Q = Queue(u8);
-    var queue = Q{};
-    var node1 = try std.testing.allocator.create(Q.Node);
-    defer std.testing.allocator.destroy(node1);
-    var node2 = try std.testing.allocator.create(Q.Node);
-    defer std.testing.allocator.destroy(node2);
-    var node3 = try std.testing.allocator.create(Q.Node);
-    defer std.testing.allocator.destroy(node3);
-    node1.data = 1;
-    node2.data = 2;
-    node3.data = 3;
-    queue.insert(node1);
-    queue.insert(node2);
-    queue.insert(node3);
-    std.testing.expect(queue.pop() == node1);
-    print("ok1", .{});
-    std.testing.expect(queue.pop() == node2);
-    print("ok2", .{});
-    std.testing.expect(queue.pop() == node3);
-    print("ok3", .{});
-    std.testing.expect(queue.pop() == null);
-}
+// }
+// test "first in is first out" {
+//     const Q = Queue(u8);
+//     var queue = Q{};
+//     var node1 = try std.testing.allocator.create(Q.Node);
+//     defer std.testing.allocator.destroy(node1);
+//     var node2 = try std.testing.allocator.create(Q.Node);
+//     defer std.testing.allocator.destroy(node2);
+//     var node3 = try std.testing.allocator.create(Q.Node);
+//     defer std.testing.allocator.destroy(node3);
+//     node1.data = 1;
+//     node2.data = 2;
+//     node3.data = 3;
+//     queue.insert(node1);
+//     queue.insert(node2);
+//     queue.insert(node3);
+//     std.testing.expect(queue.pop() == node1);
+//     print("ok1", .{});
+//     std.testing.expect(queue.pop() == node2);
+//     print("ok2", .{});
+//     std.testing.expect(queue.pop() == node3);
+//     print("ok3", .{});
+//     std.testing.expect(queue.pop() == null);
+// }
 
-test "memory leak" {
-    const Q = Queue(u8);
-    var queue = Q{};
-    var node1 = try std.testing.allocator.create(Q.Node);
-    // defer std.testing.allocator.destroy(node1);
-    var node2 = try std.testing.allocator.create(Q.Node);
-    // defer std.testing.allocator.destroy(node2);
-    var node3 = try std.testing.allocator.create(Q.Node);
-    // defer std.testing.allocator.destroy(node3);
-    node1.data = 1;
-    node2.data = 2;
-    node3.data = 3;
-    queue.insert(node1);
-    queue.insert(node2);
-    queue.insert(node3);
-    while (queue.pop()) |node| {
-        std.testing.allocator.destroy(node);
-    }
-}
+// test "memory leak" {
+//     const Q = Queue(u8);
+//     var queue = Q{};
+//     var node1 = try std.testing.allocator.create(Q.Node);
+//     // defer std.testing.allocator.destroy(node1);
+//     var node2 = try std.testing.allocator.create(Q.Node);
+//     // defer std.testing.allocator.destroy(node2);
+//     var node3 = try std.testing.allocator.create(Q.Node);
+//     // defer std.testing.allocator.destroy(node3);
+//     node1.data = 1;
+//     node2.data = 2;
+//     node3.data = 3;
+//     queue.insert(node1);
+//     queue.insert(node2);
+//     queue.insert(node3);
+//     while (queue.pop()) |node| {
+//         std.testing.allocator.destroy(node);
+//     }
+// }
 
 // test "buildGraph memory leak" {
 
@@ -489,23 +420,29 @@ test "memory leak" {
 //    try main();
 // }
 
-test "longestShortestPath" {
-    var graph = try buildGraph(std.testing.allocator);
-    defer {
-        var it = graph.iterator();
-        while (it.next()) |kv| {
-            kv.value.deinit();
-        }
-        graph.deinit();
-    }
+// test "longestShortestPath" {
+//     var graph = try buildGraph(std.testing.allocator);
+//     defer {
+//         var it = graph.iterator();
+//         while (it.next()) |kv| {
+//             kv.value.deinit();
+//         }
+//         graph.deinit();
+//     }
 
-    const x = try longestShortestPath(std.testing.allocator, graph, "test");
-    print("length: {}", .{x.len});
-    for (x) |vertex| { 
-        if (!std.mem.eql(u8, vertex,"")) {
-            print("{s}\n", .{vertex});
-        }
-    }
-    std.testing.allocator.free(x);
+//     const x = try longestShortestPath(std.testing.allocator, graph, "test");
+//     print("length: {}", .{x.len});
+//     for (x) |vertex| { 
+//         if (!std.mem.eql(u8, vertex,"")) {
+//             print("{s}\n", .{vertex});
+//         }
+//     }
+//     std.testing.allocator.free(x);
 
-}
+// }
+
+// test "copy a slice" {
+//     var array = [_][]const u8{"mark", "zucc"};
+//     var slice = array[0..];
+//     var copy = std.mem.dupe(std.testing.allocator, []const u8, slice);
+// }
