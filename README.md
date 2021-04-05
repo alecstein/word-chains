@@ -65,6 +65,12 @@ For comparison, the python version took me less than 30 minutes.
 * working with strings
 * calculating distances between strings
 
+# Bonus: longest-shortest word chain
+
+Included is an experimental program which will calculate the longest-shortest word chain (that is, given all the shortest word chains between two words, the longest of those). This is also known as the diameter of a graph. This function will print out longer and longer trial diameters until it loops through the whole graph. 
+
+It's not the prettiest program, but it works.
+
 # What next?
 
 It would be nice to have the option to pre-build the graph at compile time so that you don't have to build it on every run.
