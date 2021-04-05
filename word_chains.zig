@@ -11,18 +11,14 @@ const ansiRed = "\x1b[31;1m";
 const ansiEnd = "\x1b[0m";
 
 pub fn main() !void {
+
     print("Starting Alec's {s}word-chain-finder{s}. Press Ctrl-C to exit.\n", .{ ansiCyan, ansiEnd });
     print("Usage: type in a start word and an end word to find the shortest path between them.\n", .{});
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var gpa_alloc = &gpa.allocator;
 
-    var arena = std.heap.ArenaAllocator.init(gpa_alloc);
-    defer arena.deinit();
-
-    var arena_alloc = &arena.allocator;
-
-    var graph = try buildGraph(arena_alloc);
+    var graph = try buildGraph(gpa_alloc);
     defer {
         var it = graph.iterator();
         while (it.next()) |kv| {
@@ -31,7 +27,10 @@ pub fn main() !void {
         graph.deinit();
     }
 
-    // main loop
+    // Main loop
+    // NOTE: Arena allocator can be initialized inside the loop to free
+    // everything at once. Is this the right idea? Seems to simplify
+    // a lot. 
 
     while (true) {
 
@@ -67,8 +66,10 @@ pub fn main() !void {
         }
 
         // Not sure why the arena allocator works better than the GPA.
+        var arena = std.heap.ArenaAllocator.init(gpa_alloc);
+        defer arena.deinit();
 
-        try breadthFirstSearch(arena_alloc, graph, start, end);
+        try breadthFirstSearch(&arena.allocator, graph, start, end);
     }
 }
 
@@ -121,6 +122,7 @@ fn buildGraph(allocator: *std.mem.Allocator) !std.StringHashMap(std.ArrayList([]
         // only with the words of equal length or of length one
         // less than it, not including itself. this avoids a complete
         // double for-loop.
+
         var j = k;
 
         // perc is percent complete, used to tell the user
@@ -167,7 +169,7 @@ fn Queue(comptime T: type) type {
 
         pub const Node = struct {
             next: ?*Node = null,
-            data: comptime T,
+            data: T,
         };
 
         first: ?*Node = null,
@@ -269,15 +271,6 @@ fn breadthFirstSearch(allocator: *std.mem.Allocator, graph: std.StringHashMap(st
         try explored.put(last_vertex);
     }
     print("{s}No path found.{s}", .{ ansiRed, ansiEnd });
-}
-
-fn strLenComp(context: void, stra: []const u8, strb: []const u8) bool {
-
-    if (strb.len > stra.len) {
-        return true;
-    } else {
-        return false;
-    }
 }
 
 fn unitEditDistance(long: []const u8, short: []const u8) bool {
@@ -452,10 +445,10 @@ test "buildGraph memory leak" {
 }
 
 test "building the word list" {
-    const x = try buildWordList(std.testing.allocator);
+    const x = try buildSortedWordList(std.testing.allocator);
     defer std.testing.allocator.free(x);
 }
 
 test "memory leak with arena allocator" {
-    try main();
+   try main();
 }

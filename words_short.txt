@@ -818,6 +818,7 @@ aluminium
 aluminum
 alumni
 always
+am
 amalgam
 amalgamated
 amalgamation
@@ -1289,7 +1290,6 @@ arduous
 are
 area
 areas
-aren't
 arena
 arenas
 ares
@@ -5317,7 +5317,6 @@ cough
 coughing
 coughs
 could
-couldn't
 council
 councils
 counsel
@@ -6588,7 +6587,6 @@ dictionary
 dictum
 did
 didactic
-didn't
 die
 died
 diego
@@ -7178,7 +7176,6 @@ dodo
 doe
 doers
 does
-doesn't
 doff
 dog
 dogged
@@ -7226,8 +7223,6 @@ domino
 dominoes
 dominos
 don
-don't
-don'ts
 donald
 donate
 donated
@@ -10935,7 +10930,6 @@ haunts
 havana
 have
 haven
-haven't
 haver
 haves
 having
@@ -10959,7 +10953,6 @@ haze
 hazelnut
 hazy
 he
-he'd
 head
 headache
 headaches
@@ -11578,7 +11571,6 @@ hysteria
 hysterical
 hysterically
 i
-i'd
 iberian
 ice
 iceberg
@@ -21397,7 +21389,6 @@ shots
 should
 shoulder
 shoulders
-shouldn't
 shout
 shouted
 shouting
@@ -23839,7 +23830,6 @@ thanks
 thanksgiving
 thar
 that
-that's
 thatcher
 thaw
 thawed
@@ -23894,7 +23884,6 @@ thesis
 theta
 thew
 they
-they'll
 thick
 thicken
 thickened
@@ -25980,7 +25969,6 @@ washing
 washington
 washroom
 washy
-wasn't
 wasp
 waste
 wastebasket
@@ -26036,7 +26024,6 @@ wayne
 ways
 wayside
 we
-we'd
 weak
 weaken
 weakened
@@ -26394,7 +26381,7 @@ woman
 womb
 women
 won
-won't
+wont
 wonder
 wondered
 wonderful
